@@ -1,0 +1,9 @@
+<Pattern>
+	<URLRules>
+		<RegexInclude>^(http://www.test.com)</RegexInclude>
+	</URLRules>
+	<Field title="Title">
+		<XPath>/html/head/title</XPath>
+		<Type name="string" />
+	</Field>
+</Pattern>				

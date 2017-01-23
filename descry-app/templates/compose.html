@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="/assets/compose.css">
+		<script
+			  src="https://code.jquery.com/jquery-3.1.1.min.js"
+			  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+			  crossorigin="anonymous"></script>
+	
+		<!--[if lt IE 9]>
+		  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+<body>
+	<object data="{{.Title}}/graph.svg" type="image/svg+xml" id="graph-svg">
+		Your browser doesn't support SVG
+	</object>
+
+	<div id="popup">
+	</div>
+
+	<script type="text/javascript">
+		var map;
+		var popup;
+		var over_timeout;
+
+		var PopupSetClosing = function() {
+			over_timeout = setTimeout(function(){
+				$(popup).fadeOut(500);
+			}, 500);			
+		}
+
+		var PopupShow = function(el) {
+			clearTimeout(over_timeout);
+			var cnt = 0;
+			var vals = map[el.id].FieldData
+			var rend = "";
+			for (var n in vals) {
+				var part = "";
+				if (n != "") {
+					part += "<li><h3>"+n+"</h3></li>";
+				}
+				if (vals.hasOwnProperty(n)) {
+					for (let i = 0; i < vals[n].length; i++) {
+						part += "<li>"+vals[n][i]+"</li>";	
+						cnt++;
+					}
+				}
+				rend += "<li><ul>"+part+"</ul></li>";
+			}
+
+			$(popup).html("<p>"+map[el.id].XPath+"<p>");
+
+			if (cnt > 0) {
+				var rect = el.getBoundingClientRect();
+				$(popup).css("top", rect.bottom+"px");
+				$(popup).css("left", rect.right+"px");
+				$(popup).append("<ul>"+rend+"</ul>");
+			}
+
+			$(popup).fadeIn(500)
+
+		}
+
+		window.onload=function() {
+			// Get the Object by ID
+			var a = document.getElementById("graph-svg");
+			// Get the SVG document inside the Object tag
+			var svgDoc = a.contentDocument;
+			// Get one of the SVG items by ID;
+			var garr = svgDoc.getElementsByClassName("node");
+			for (let i = 0; i < garr.length; i++) {
+				garr[i].selected = false;
+				$(garr[i]).css("pointer-events", "all");
+
+				$(garr[i]).on("mouseenter", function(){
+					PopupShow(garr[i]);
+				});
+
+				$(garr[i]).on("mouseleave", function(){
+					PopupSetClosing();
+				});
+
+				$(garr[i]).on("click", function(){
+					garr[i].selected = !garr[i].selected;
+					if (garr[i].selected) {
+						$(garr[i]).toggleClass("selected");
+					}
+				});
+			}
+		};
+
+		$(document).ready(function(){
+			popup = $("div#popup");
+			$(popup).mouseenter(function(){
+				clearTimeout(over_timeout);
+			});
+			$(popup).mouseleave(function(){
+				PopupSetClosing();
+			});			
+			$.getJSON("{{.Title}}/graph.json", function(data){
+				map = data;
+			});
+		})
+	</script>
+</body>
+</html>
