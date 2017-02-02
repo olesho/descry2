@@ -12,7 +12,8 @@ import (
 	"strconv"
 	"strings"
 
-	"bitbucket.org/olesho/scrub/logging"
+	"github.com/olesho/descry"
+	//"bitbucket.org/olesho/scrub/logging"
 	"gopkg.in/xmlpath.v2"
 )
 
@@ -59,12 +60,12 @@ type Patterns struct {
 
 	//HtmlMaps map[string]*HtmlMap
 	//JsonMaps map[string]*JsonMap
-	Log *logging.Logger
+	Log *descry.Logger
 }
 
-func NewPatterns() *Patterns {
-	log := logging.NewLogger()
-	log.Level = logging.LEVEL_DEBUG
+func NewPatterns(log *descry.Logger) *Patterns {
+	//	log := logging.NewLogger()
+	//	log.Level = logging.LEVEL_DEBUG
 	return &Patterns{
 		HtmlPatternTree: &PatternNode{}, //make(map[string]interface{}),
 		//HtmlMaps: make(map[string]*HtmlMap),

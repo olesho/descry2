@@ -2,15 +2,15 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 
 	"github.com/olesho/descry/server"
 )
 
 func main() {
-	port := 9999
-	fmt.Println("Descry recognition server started at :", port)
-	err := server.Start(port)
+	var port = flag.Int("p", 9999, "Listen port")
+	flag.Parse()
+	err := server.Start(*port)
 	if err != nil {
 		panic(err)
 	}

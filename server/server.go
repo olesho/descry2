@@ -4,17 +4,21 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	//"log"
 	"net/http"
+	//	"os"
 	"strconv"
 
-	"bitbucket.org/olesho/scrub/recognizer/parser"
+	"github.com/olesho/descry"
+	"github.com/olesho/descry/parser"
+	//"bitbucket.org/olesho/scrub/recognizer/parser"
 
 	"github.com/gorilla/mux"
 )
 
 var patterns *parser.Patterns
+var log *descry.Logger
 
 type ResponseMessage struct {
 	Message string
@@ -27,14 +31,23 @@ func (r *ResponseMessage) ToJSON() []byte {
 }
 
 func LoadPatterns() error {
-	patterns = parser.NewPatterns()
+	patterns = parser.NewPatterns(log)
 	return patterns.LoadTree(patterns.HtmlPatternTree, "patterns")
 }
 
 func Start(port int) error {
+	/*
+		file, _ := os.OpenFile("error.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		defer file.Close()
+		logger = log.New(file, "", log.Ldate|log.Ltime|log.Lshortfile)
+		logger.Println("Startig server on localhost:", port)
+	*/
+	log := descry.NewLogger()
+	log.Level = descry.LEVEL_DEBUG
+
 	err := LoadPatterns()
 	if err != nil {
-		fmt.Println(err)
+		log.Message(err)
 	}
 
 	router := mux.NewRouter()
@@ -47,10 +60,9 @@ func Start(port int) error {
 }
 
 func reloadPatterns(res http.ResponseWriter, req *http.Request) {
-	fmt.Println("Reloading patterns...")
 	err := LoadPatterns()
 	if err != nil {
-		fmt.Println(err)
+		log.Message(err)
 		res.WriteHeader(500)
 		return
 	}
@@ -66,9 +78,7 @@ func parseData(res http.ResponseWriter, req *http.Request) {
 		}
 
 		if req.Header.Get("X-Source") == "" {
-			fmt.Println("Warning: X-Source http header can't be empty")
-		} else {
-			fmt.Println(req.Header.Get("X-Source"))
+			log.Message("Warning: X-Source http header can't be empty")
 		}
 
 		node, err := patterns.Apply(req.Header.Get("X-Source"), bytes.NewReader(data))
