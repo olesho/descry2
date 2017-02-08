@@ -4,22 +4,22 @@ It makes parsing, crawling and scraping different and related sources an easy ta
 
 ### Server API ###
 
-GET /patterns
+**GET /patterns**
 Get the list of all available patterns
 
-PUT /pattern/{path:/source/subsource/.../PatternName.xml}
+**PUT /pattern/{path:/source/subsource/.../PatternName.xml}**
 Creates XML pattern on server
 
-DELETE /pattern/{path:/source/subsource/.../PatternName.xml}
+**DELETE /pattern/{path:/source/subsource/.../PatternName.xml}**
 Deletes XML pattern or folder
 
-GET /pattern/{path:/source/subsource/.../PatternName.xml}
+**GET /pattern/{path:/source/subsource/.../PatternName.xml}**
 Get XML pattern from server
 
-GET /reload
+**GET /reload**
 Reloads all available patterns to memory. Uploaded pattern is only active after server reload.
 
-POST /parse
+**POST /parse**
 Parse given HTML file from given source.
 Request body is expected to be HTML.
 You should set an origin URL in HTTP header "X-Source".
