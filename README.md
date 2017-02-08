@@ -77,7 +77,7 @@ After installing patterns server is ready for use. Download page from the remote
 ```
 curl -X POST -d '... Put raw HTML here ...'  http://localhost:5000/parse -H "X-Source: http://www.first-source.com/pages/example.html"
 ```
-HTML source:
+HTML source to be sent with this request:
 
 ```
 <html>
@@ -92,7 +92,7 @@ HTML source:
 </html>
 ```
 
-Responce would be in JSON:
+Responcs would be in JSON:
 ```
 {
   "first-source.com": {
