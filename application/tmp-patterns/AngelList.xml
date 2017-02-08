@@ -1,0 +1,54 @@
+<Pattern title="AngelList">
+	<URLRules>
+		<RegexInclude>^(https://angel.co/job_listings/browse_startups_table)</RegexInclude>
+	</URLRules>
+
+	<Field title="Startup">
+		<XPath>//div[@data-_tn='job_listings/browse_startups_table_row' and @data-id]</XPath>
+		<Type name="[]struct" />
+
+		<Field title="Id">
+			<XPath>@data-id</XPath>
+			<Type name="int" />
+		</Field>
+
+		<Field title="Job">
+			<XPath>div[@class='header-info']/div[contains(@class, 'collapsed-job-listings')]/div[@class='collapsed-listing-row']</XPath>
+			<Type name="[]struct" />
+
+			<Field title="Title">
+				<XPath>div[@class='collapsed-title']</XPath>
+				<Type name="string" />
+			</Field>
+
+			<Field title="Compensation">
+				<XPath>div[@class='collapsed-compensation']</XPath>
+				<Type name="string" />
+			</Field>
+
+			<Field title="Tags">
+				<XPath>div[@class='collapsed-tags']</XPath>
+				<Type name="string" />
+			</Field>
+		</Field>
+	</Field>
+
+	<!--
+	<Field title="Startup">
+		<XPath>//div[@data-_tn='job_listings/browse_startups_table_row' and @data-id]</XPath>
+		<Type name="[]struct" />
+
+		<Field title="Job">
+			<XPath>div[@class='header-info']/div[contains(@class, 'collapsed-job-listings')]/div[@class='collapsed-listing-row']</XPath>
+			<Type name="[]struct" />
+			
+			<Field title="Title">
+				<XPath>div[@class='collapsed-title']</XPath>
+				<Type name="string">
+			</Field>
+
+
+		</Field>
+	</Field>
+-->
+</Pattern>				

@@ -1,0 +1,57 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+
+	<title>Put new pattern</title>
+	<meta name="description" content="Client for XPath Pattern Server">
+	<meta name="author" content="Oleh">
+
+	<link rel="stylesheet" href="./styles.css">
+
+	<script
+			  src="https://code.jquery.com/jquery-3.1.1.min.js"
+			  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+			  crossorigin="anonymous"></script>
+
+  <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+	<h1>XPath Patterns</h1>
+	<div>
+		<form onsubmit="return put()">
+			<input type="text" name="title" value="text_pattern.xml"><br>
+			<textarea cols="100" rows="20">
+<Pattern title="AtgTest">
+	<URLRules>
+		<RegexInclude>^(https://www.atgstores.com/)</RegexInclude>
+	</URLRules>
+	<Field title="Base">
+		<XPath>//div[@id='divBtnPageBtm']</XPath>
+		<Field title="Link" unique="true">
+			<XPath>//a/@href</XPath>
+			<DataRules>
+				<RegexInclude>^(/search/Coaster-Fine-Furniture.html?iterm=Coaster-Fine-Furniture)</RegexInclude>
+				<RegexRemove>#.+$</RegexRemove><RegexRemove>^[\\x20\\x09\\x0D\\x0A]+</RegexRemove><RegexRemove>[\\x20\\x09\\x0D\\x0A]+$</RegexRemove>
+			</DataRules>
+		</Field>
+	</Field>
+</Pattern>
+			</textarea>
+			<button>Put</button>
+		</form>
+	</div>
+	<div class="data"></div>
+	<script>
+		function put() {
+			PutPattern($("input[name='title']").val(), $("textarea").val());
+			return false
+		}
+	</script>
+	<script src="./main.js"></script>
+</body>
+</html>

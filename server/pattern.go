@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/olesho/descry/parser"
 )
 
 func listPattern(res http.ResponseWriter, req *http.Request) {
@@ -20,40 +21,57 @@ func listPattern(res http.ResponseWriter, req *http.Request) {
 }
 
 func handlePattern(res http.ResponseWriter, req *http.Request) {
+	res.Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
+	res.Header().Add("Expires", "0")
+
 	vars := mux.Vars(req)
-	title := vars["title"]
+	path := vars["path"]
 	switch req.Method {
 	case "GET":
-		if title != "" {
-			data, err := ReadPattern(title)
+		if path != "" {
+			data, err := ReadPattern(path)
 			if err != nil {
-				returnMsg(res, "Unable to find pattern "+title, err.Error())
+				returnMsg(res, "Unable to find pattern "+path, err.Error())
 				return
 			}
 			res.Header().Set("Content-Type", "text/xml")
 			res.Write(data)
 		}
 	case "PUT":
-		if title != "" {
+		if path != "" {
 			data, err := ioutil.ReadAll(req.Body)
 			if err != nil {
-				returnMsg(res, "Unable to read HTTP request for pattern "+title, err.Error())
+				returnMsg(res, "Unable to read HTTP request for pattern "+path, err.Error())
 				return
 			}
 
-			err = WritePattern(title, data)
+			next_pattern := &parser.HtmlMap{}
+			next_pattern.Unmarshal(data)
+
+			// set default type for root element
+			if next_pattern.Field.Type == nil {
+				next_pattern.Field.Type = &parser.Type{Name: "struct"}
+			}
+
+			err = next_pattern.Compile()
 			if err != nil {
-				returnMsg(res, "Unable to write pattern "+title, err.Error())
+				returnMsg(res, "Pattern compilation error: ", err.Error())
 				return
 			}
 
-			returnMsg(res, "Pattern "+title+" written succesfully", "")
+			err = WritePattern(path, data)
+			if err != nil {
+				returnMsg(res, "Unable to write pattern "+path, err.Error())
+				return
+			}
+
+			returnMsg(res, "Pattern "+path+" written succesfully", "")
 			return
 		}
 		returnMsg(res, "Please provide correct Title for a pattern", "")
 
 	case "DELETE":
-		RemovePattern(title)
+		RemovePattern(path)
 	}
 }
 

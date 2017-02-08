@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/olesho/descry"
-	//"bitbucket.org/olesho/scrub/logging"
 	"gopkg.in/xmlpath.v2"
 )
 

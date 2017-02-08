@@ -5,14 +5,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	//"log"
 	"net/http"
-	//	"os"
 	"strconv"
 
 	"github.com/olesho/descry"
 	"github.com/olesho/descry/parser"
-	//"bitbucket.org/olesho/scrub/recognizer/parser"
 
 	"github.com/gorilla/mux"
 )
@@ -51,7 +48,7 @@ func Start(port int) error {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/pattern/{title}", handlePattern)
+	router.HandleFunc("/pattern/{path:.+}", handlePattern).Methods("GET", "PUT", "DELETE")
 	router.HandleFunc("/patterns", listPattern)
 	router.HandleFunc("/reload", reloadPatterns)
 	router.HandleFunc("/parse", parseData)
