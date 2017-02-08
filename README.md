@@ -77,6 +77,20 @@ After installing patterns server is ready for use. Download page from the remote
 ```
 curl -X POST -d '... Put raw HTML here ...'  http://localhost:5000/parse -H "X-Source: http://www.first-source.com/pages/example.html"
 ```
+HTML source:
+
+```
+<html>
+	<head></head>
+	<body>
+		<ul>
+			<li class="list-item"><a href="http://www.second-source.com/blog/Hello_Word"></a></li>
+			<li class="list-item"><a href="http://www.second-source.com/blog/First_Blog_Post"></a></li>
+			<li class="list-item"><a href="http://www.second-source.com/blog/Got_something_for_ya"></a></li>
+		</ul>
+	</body>
+</html>
+```
 
 Responce would be in JSON:
 ```
