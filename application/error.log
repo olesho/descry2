@@ -11,3 +11,4 @@
  Path: //div[@data-_tn='job_listings
 2017/01/23 06:26:06 logging.go:36: Unrecognized type integer
 2017/02/02 19:00:55 server.go:40: Startig server on localhost: 9999
+2017/02/08 17:58:10 logging.go:50: [open patterns: no such file or directory]
