@@ -1,9 +1,0 @@
-<Pattern title="AngelToken">
-	<URLRules>
-		<RegexInclude>^(https://angel.co/login)$</RegexInclude>
-	</URLRules>
-	<Field title="Token">
-		<XPath>//meta[@name='csrf-token']/@content</XPath>
-		<Type name="string" />
-	</Field>
-</Pattern>				
