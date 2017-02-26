@@ -208,6 +208,10 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 				next_pattern := &HtmlMap{}
 				next_pattern.Unmarshal(data)
 
+				if next_pattern.Field == nil {
+					return nil
+				}
+
 				// set default type for root element
 				if next_pattern.Field.Type == nil {
 					next_pattern.Field.Type = &Type{Name: "struct"}
