@@ -50,15 +50,3 @@ func ReadPattern(title string) ([]byte, error) {
 	data, err := ioutil.ReadFile("patterns/" + title)
 	return data, err
 }
-
-func ListPatterns() ([]string, error) {
-	files, err := ioutil.ReadDir("patterns")
-	if err != nil {
-		return nil, err
-	}
-	result := make([]string, len(files))
-	for i, f := range files {
-		result[i] = f.Name()
-	}
-	return result, nil
-}

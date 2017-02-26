@@ -2,7 +2,7 @@
 package server
 
 import (
-	"fmt"
+	//	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -12,10 +12,7 @@ import (
 )
 
 func listPattern(res http.ResponseWriter, req *http.Request) {
-	list, err := ListPatterns()
-	if err != nil {
-		res.Write([]byte("Unable to read pattern list"))
-	}
+	list := patterns.HtmlPatternTree.ListPatterns()
 	data := strings.Join(list, "\n")
 	res.Write([]byte(data))
 }
@@ -76,7 +73,6 @@ func handlePattern(res http.ResponseWriter, req *http.Request) {
 }
 
 func returnMsg(res http.ResponseWriter, msg string, details string) {
-	fmt.Println(msg)
 	m := &ResponseMessage{
 		Message: msg,
 		Details: details,

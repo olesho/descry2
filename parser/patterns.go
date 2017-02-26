@@ -4,7 +4,7 @@ package parser
 import (
 	"encoding/xml"
 	"errors"
-	//"fmt"
+	//	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -108,8 +108,11 @@ func (f *Field) setParent() {
 
 func (f *HtmlMap) Unmarshal(data []byte) error {
 	err := xml.Unmarshal(data, &f)
+	if err != nil {
+		return err
+	}
 	f.Field.setParent()
-	return err
+	return nil
 }
 
 func (f *HtmlMap) Marshal() ([]byte, error) {
@@ -221,71 +224,6 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 	return nil
 }
 
-/*
-func (p *Patterns) LoadAppend(dir string, root bool) error {
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, f := range files {
-		if f.IsDir() {
-			err := p.LoadAppend(dir+"/"+f.Name(), false)
-			if err != nil {
-				p.Log.IsError("", err)
-			}
-		} else {
-			parts := strings.Split(f.Name(), ".")
-			ext := parts[len(parts)-1]
-			data, err := ioutil.ReadFile(dir + "/" + f.Name())
-			if err != nil {
-				p.Log.IsError("", err)
-			} else {
-				var key string
-				if root {
-					key = f.Name()
-				} else {
-					key = dir + "/" + f.Name()
-				}
-				switch ext {
-				case "xml":
-					next_pattern := &HtmlMap{}
-					next_pattern.Unmarshal(data)
-
-					// set default type for root element
-					if next_pattern.Field.Type == nil {
-						next_pattern.Field.Type = &Type{Name: "struct"}
-					}
-					err = next_pattern.Compile()
-					if err != nil {
-						p.Log.IsError("Pattern compilation error: ", err)
-					} else {
-						p.HtmlMaps[key] = next_pattern
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-*/
-
-/*
-func (ps *Patterns) AddPattern(title string, xmldata []byte) error {
-	err := ps.HtmlMaps[title].Unmarshal(xmldata)
-	if err != nil {
-		return err
-	}
-
-	err = ps.HtmlMaps[title].URLRules.Compile()
-	if err != nil {
-		e := errors.New(err.Error() + "\n Pattern: " + title)
-		return e
-	}
-
-	return ps.HtmlMaps[title].Field.Compile()
-}
-*/
-
 func (p *HtmlMap) Compile() error {
 	err := p.URLRules.Compile()
 	if err != nil {
@@ -328,7 +266,9 @@ func (p *RegexRules) Clean(s []byte) []byte {
 			s = p.regexSubmatchCompiled.Find(s)
 		}
 		for _, r := range p.regexRemoveCompiled {
-			s = r.ReplaceAll(s, []byte{})
+			if r != nil {
+				s = r.ReplaceAll(s, []byte{})
+			}
 		}
 	}
 	return s
@@ -429,8 +369,8 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 					bts := iter.Node().Bytes()
 					test := f.DataRules.Test(bts)
 					if test {
-						bts := f.DataRules.Clean(bts)
-						val, err := ByteToKind(f.Type.kind, bts)
+						cut := f.DataRules.Clean(bts)
+						val, err := ByteToKind(f.Type.kind, cut)
 						if err != nil {
 							//fmt.Println(err)
 						} else {
@@ -455,13 +395,16 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 			} else {
 				val, ok := query.Bytes(root)
 				if ok {
-					var err error
-					result, err = ByteToKind(f.Type.kind, val)
-					if err != nil {
-						//fmt.Println(err)
+					test := f.DataRules.Test(val)
+					if test {
+						cut := f.DataRules.Clean(val)
+						var err error
+						result, err = ByteToKind(f.Type.kind, cut)
+						if err != nil {
+							//fmt.Println(err)
+						}
 					}
 				}
-
 			}
 
 			// exit if at least 1 value found for XPath
@@ -520,8 +463,11 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 }
 
 func (p *HtmlMap) ApplyHtml(url string, context *xmlpath.Node) interface{} {
-	if !p.URLRules.Test([]byte(url)) {
-		return nil
+	// source URL should be either empty or fit current URL pattern
+	if url != "" {
+		if !p.URLRules.Test([]byte(url)) {
+			return nil
+		}
 	}
 
 	// retrieve data for root field
@@ -567,4 +513,20 @@ func (pn *PatternNode) ApplyHtmlPatterns(url string, data *xmlpath.Node /*conten
 	}
 
 	return el
+}
+
+func (pn *PatternNode) ListPatterns() []string {
+	res := []string{}
+	for key, val := range *pn {
+		if _, ok := val.(*HtmlMap); ok {
+			res = append(res, key)
+		} else if subPattern, ok := val.(*PatternNode); ok {
+			children := subPattern.ListPatterns()
+			for _, childName := range children {
+				res = append(res, key+"/"+childName)
+			}
+		}
+	}
+
+	return res
 }
