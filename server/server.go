@@ -4,7 +4,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	//	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -66,7 +65,7 @@ func Start(port int) error {
 		logger = log.New(file, "", log.Ldate|log.Ltime|log.Lshortfile)
 		logger.Println("Startig server on localhost:", port)
 	*/
-	log := descry.NewLogger()
+	log = descry.NewLogger()
 	log.Level = descry.LEVEL_DEBUG
 
 	err := LoadPatterns()
@@ -74,7 +73,10 @@ func Start(port int) error {
 		log.Message(err)
 	}
 
-	LoadSamples()
+	err = LoadSamples()
+	if err != nil {
+		log.Message(err)
+	}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/pattern/{path:.+}", handlePattern).Methods("GET", "PUT", "DELETE")
@@ -97,6 +99,7 @@ func reloadPatterns(res http.ResponseWriter, req *http.Request) {
 }
 
 func parseData(res http.ResponseWriter, req *http.Request) {
+
 	data, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		res.Write([]byte("Unable to read request body"))

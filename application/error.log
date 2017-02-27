@@ -12,3 +12,8 @@
 2017/01/23 06:26:06 logging.go:36: Unrecognized type integer
 2017/02/02 19:00:55 server.go:40: Startig server on localhost: 9999
 2017/02/08 17:58:10 logging.go:50: [open patterns: no such file or directory]
+2017/02/27 07:38:05 logging.go:50: [ahhahaha]
+2017/02/27 07:41:13 logging.go:36: EOF
+2017/02/27 07:42:27 logging.go:36: EOF
+2017/02/27 07:42:48 logging.go:36: EOF
+2017/02/27 07:43:02 logging.go:36: EOF

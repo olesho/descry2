@@ -4,7 +4,6 @@ package parser
 import (
 	"encoding/xml"
 	"errors"
-	//	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -56,10 +55,7 @@ type PatternNode map[string]interface{}
 
 type Patterns struct {
 	HtmlPatternTree *PatternNode
-
-	//HtmlMaps map[string]*HtmlMap
-	//JsonMaps map[string]*JsonMap
-	Log *descry.Logger
+	Log             *descry.Logger
 }
 
 func NewPatterns(log *descry.Logger) *Patterns {
@@ -189,6 +185,11 @@ type HtmlMap struct {
 	URLRules *RegexRules
 }
 
+func hasExt(fileName, ext string) bool {
+	parts := strings.Split(fileName, ".")
+	return parts[len(parts)-1] == ext
+}
+
 func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -198,29 +199,35 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 		itemName := f.Name()
 		if f.IsDir() {
 			new_el := &PatternNode{}
-			p.LoadTree(new_el, path+"/"+itemName)
+			err := p.LoadTree(new_el, path+"/"+itemName)
+			if err != nil {
+				p.Log.IsError("", err)
+			}
 			map[string]interface{}(*el)[itemName] = new_el
 		} else {
 			data, err := ioutil.ReadFile(path + "/" + itemName)
-			if err != nil {
-				p.Log.IsError("", err)
-			} else {
-				next_pattern := &HtmlMap{}
-				next_pattern.Unmarshal(data)
-
-				if next_pattern.Field == nil {
-					return nil
-				}
-
-				// set default type for root element
-				if next_pattern.Field.Type == nil {
-					next_pattern.Field.Type = &Type{Name: "struct"}
-				}
-				err = next_pattern.Compile()
+			if hasExt(itemName, "xml") {
 				if err != nil {
-					p.Log.IsError("Pattern compilation error: ", err)
+					p.Log.IsError("", err)
 				} else {
-					map[string]interface{}(*el)[itemName] = next_pattern
+					next_pattern := &HtmlMap{}
+					err := next_pattern.Unmarshal(data)
+					if err != nil {
+						p.Log.IsError("Pattern "+path+"/"+itemName+" compilation error", err)
+					} else {
+
+						// set default type for root element
+						if next_pattern.Field.Type == nil {
+							next_pattern.Field.Type = &Type{Name: "struct"}
+						}
+						err = next_pattern.Compile()
+						if err != nil {
+							p.Log.IsError("Pattern compilation error: ", err)
+						} else {
+							map[string]interface{}(*el)[itemName] = next_pattern
+						}
+
+					}
 				}
 			}
 		}
@@ -468,6 +475,7 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 
 func (p *HtmlMap) ApplyHtml(url string, context *xmlpath.Node) interface{} {
 	// source URL should be either empty or fit current URL pattern
+
 	if url != "" {
 		if !p.URLRules.Test([]byte(url)) {
 			return nil
@@ -490,6 +498,7 @@ func (p *Patterns) Apply(url string, content io.Reader) (map[string]interface{},
 	if err != nil {
 		return nil, err
 	}
+
 	return p.HtmlPatternTree.ApplyHtmlPatterns(url, data), nil
 }
 
