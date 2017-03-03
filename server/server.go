@@ -3,6 +3,7 @@ package server
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -83,6 +84,7 @@ func Start(port int) error {
 	router.HandleFunc("/patterns", listPattern)
 	router.HandleFunc("/reload", reloadPatterns)
 	router.HandleFunc("/parse", parseData).Methods("POST")
+	router.HandleFunc("/parse-gzip", parseGzip).Methods("POST")
 	router.HandleFunc("/check", checkPattern).Methods("POST")
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./assets/")))
 	return http.ListenAndServe(":"+strconv.Itoa(port), router)
@@ -99,8 +101,34 @@ func reloadPatterns(res http.ResponseWriter, req *http.Request) {
 }
 
 func parseData(res http.ResponseWriter, req *http.Request) {
-
 	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		res.Write([]byte("Unable to read request body"))
+		return
+	}
+
+	if req.Header.Get("X-Source") == "" {
+		log.Message("Warning: X-Source http header can't be empty")
+	}
+
+	node, err := patterns.Apply(req.Header.Get("X-Source"), bytes.NewReader(data))
+	if err != nil {
+		res.Write([]byte("Error applying patterns"))
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(res).Encode(&node)
+}
+
+func parseGzip(res http.ResponseWriter, req *http.Request) {
+	gzipReader, err := gzip.NewReader(req.Body)
+	if err != nil {
+		res.Write([]byte("Unable to read request body"))
+		return
+	}
+
+	data, err := ioutil.ReadAll(gzipReader)
 	if err != nil {
 		res.Write([]byte("Unable to read request body"))
 		return
