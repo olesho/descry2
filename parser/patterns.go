@@ -148,7 +148,6 @@ func (t *Type) Compile() error {
 }
 
 func (f *Field) Compile() error {
-	//if f != nil {
 	for _, x := range f.XPath {
 		query, err := xmlpath.Compile(x)
 		if err != nil {
@@ -158,7 +157,10 @@ func (f *Field) Compile() error {
 		f.xquery = append(f.xquery, query)
 	}
 
-	f.DataRules.Compile()
+	err := f.DataRules.Compile()
+	if err != nil {
+		return err
+	}
 	for _, c := range f.Field {
 		err := c.Compile()
 		if err != nil {
@@ -170,11 +172,11 @@ func (f *Field) Compile() error {
 		return errors.New("Failed to compile " + f.Title + ". Field missing type")
 	}
 
-	err := f.Type.Compile()
+	err = f.Type.Compile()
 	if err != nil {
 		return err
 	}
-	//}
+
 	return nil
 }
 
@@ -271,11 +273,38 @@ func (p *RegexRules) Test(s []byte) bool {
 	return true
 }
 
-func (p *RegexRules) Clean(s []byte) []byte {
+func (p *RegexRules) FindOne(s []byte) []byte {
 	if p != nil {
 		if p.regexSubmatchCompiled != nil {
-			s = p.regexSubmatchCompiled.Find(s)
+			res := p.regexSubmatchCompiled.FindSubmatch(s)
+			if len(res) > 0 {
+				return res[1]
+			}
+			return []byte{}
 		}
+	}
+	return s
+}
+
+func (p *RegexRules) FindMultiple(s []byte) [][]byte {
+	if p != nil {
+		if p.regexSubmatchCompiled != nil {
+			found := p.regexSubmatchCompiled.FindAllSubmatch(s, -1)
+			res := make([][]byte, len(found))
+			for i, pair := range found {
+				res[i] = pair[1]
+			}
+			return res
+		}
+	}
+	return [][]byte{s}
+}
+
+func (p *RegexRules) Clean(s []byte) []byte {
+	if p != nil {
+		//if p.regexSubmatchCompiled != nil {
+		//	s = p.regexSubmatchCompiled.Find(s)
+		//}
 		for _, r := range p.regexRemoveCompiled {
 			if r != nil {
 				s = r.ReplaceAll(s, []byte{})
@@ -300,47 +329,50 @@ func (p *RegexRules) Compile() error {
 				return e
 			}
 		}
-		p.regexExcludeCompiled = make([]*regexp.Regexp, len(p.RegexExclude))
-		for i, r := range p.RegexExclude {
+		p.regexExcludeCompiled = make([]*regexp.Regexp, 0)
+		for _, r := range p.RegexExclude {
 			text, err := strconv.Unquote(`"` + r + `"`)
 			if err != nil {
 				e := errors.New(err.Error() + "\n Regex 'Exclude' expression: " + r)
 				return e
 			}
 
-			p.regexExcludeCompiled[i], err = regexp.Compile(text)
+			compiled, err := regexp.Compile(text)
 			if err != nil {
 				e := errors.New(err.Error() + "\n Regex 'Exclude' expression: " + r)
 				return e
 			}
+			p.regexExcludeCompiled = append(p.regexExcludeCompiled, compiled)
 		}
-		p.regexIncludeCompiled = make([]*regexp.Regexp, len(p.RegexInclude))
-		for i, r := range p.RegexInclude {
+		p.regexIncludeCompiled = make([]*regexp.Regexp, 0)
+		for _, r := range p.RegexInclude {
 			text, err := strconv.Unquote(`"` + r + `"`)
 			if err != nil {
 				e := errors.New(err.Error() + "\n Regex 'Include' expression: " + r)
 				return e
 			}
 
-			p.regexIncludeCompiled[i], err = regexp.Compile(text)
+			compiled, err := regexp.Compile(text)
 			if err != nil {
 				e := errors.New(err.Error() + "\n Regex 'Include' expression: " + r)
 				return e
 			}
+			p.regexIncludeCompiled = append(p.regexIncludeCompiled, compiled)
 		}
-		p.regexRemoveCompiled = make([]*regexp.Regexp, len(p.RegexRemove))
-		for i, r := range p.RegexRemove {
+		p.regexRemoveCompiled = make([]*regexp.Regexp, 0)
+		for _, r := range p.RegexRemove {
 			text, err := strconv.Unquote(`"` + r + `"`)
 			if err != nil {
 				e := errors.New(err.Error() + "\n Regex 'Remove' expression: " + r)
 				return e
 			}
 
-			p.regexRemoveCompiled[i], err = regexp.Compile(text)
+			compiled, err := regexp.Compile(text)
 			if err != nil {
 				e := errors.New(err.Error() + "\n Regex 'Remove' expression: " + r)
 				return e
 			}
+			p.regexRemoveCompiled = append(p.regexRemoveCompiled, compiled)
 		}
 	}
 	return nil
@@ -380,24 +412,28 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 					bts := iter.Node().Bytes()
 					test := f.DataRules.Test(bts)
 					if test {
-						cut := f.DataRules.Clean(bts)
-						val, err := ByteToKind(f.Type.kind, cut)
-						if err != nil {
-							//fmt.Println(err)
-						} else {
-							if f.Unique {
-								unique := true
-								for _, v := range res {
-									// not sure if it will work???
-									if v == val {
-										unique = false
+						found := f.DataRules.FindMultiple(bts)
+						for _, nextVal := range found {
+							cut := f.DataRules.Clean(nextVal)
+							val, err := ByteToKind(f.Type.kind, cut)
+							if err != nil {
+								// cannot convert
+								//fmt.Println(err)
+							} else {
+								if f.Unique {
+									unique := true
+									for _, v := range res {
+										// not sure if it will work???
+										if v == val {
+											unique = false
+										}
 									}
-								}
-								if unique {
+									if unique {
+										res = append(res, val)
+									}
+								} else {
 									res = append(res, val)
 								}
-							} else {
-								res = append(res, val)
 							}
 						}
 					}
@@ -409,9 +445,11 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 					test := f.DataRules.Test(val)
 					if test {
 						cut := f.DataRules.Clean(val)
+						found := f.DataRules.FindOne(cut)
 						var err error
-						result, err = ByteToKind(f.Type.kind, cut)
+						result, err = ByteToKind(f.Type.kind, found)
 						if err != nil {
+							// cant convert
 							//fmt.Println(err)
 						}
 					}
