@@ -4,41 +4,44 @@ package parser
 import (
 	"encoding/xml"
 	"errors"
+	//"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/olesho/descry"
 	"gopkg.in/xmlpath.v2"
 )
 
-type RegexRules struct {
-	RegexSubmatch string
-	RegexInclude  []string
-	RegexExclude  []string
-	RegexRemove   []string
+var lineSplit = regexp.MustCompile(`[\s\n]+`)
 
-	regexSubmatchCompiled *regexp.Regexp
-	regexIncludeCompiled  []*regexp.Regexp
-	regexExcludeCompiled  []*regexp.Regexp
-	regexRemoveCompiled   []*regexp.Regexp
+type RegexRules struct {
+	Submatch string
+	Include  string
+	Exclude  string
+	Remove   string
+}
+
+type CompiledRegexRules struct {
+	Submatch *regexp.Regexp
+	Include  []*regexp.Regexp
+	Exclude  []*regexp.Regexp
+	Remove   []*regexp.Regexp
 }
 
 type Type struct {
-	Name string `xml:"name,attr"`
-
 	kind    reflect.Kind
 	isArray bool
 }
 
 type Field struct {
-	Title     string `xml:"title,attr"`
-	Type      *Type
-	XPath     []string
-	DataRules *RegexRules
+	Title string `xml:"title,attr"`
+	Type  string `xml:"type,attr"`
+	Path  string
+	Data  *RegexRules
 
 	Optional  bool `xml:"optional,attr,omitempty"`
 	DontStore bool `xml:"dontstore,attr,omitempty"`
@@ -46,24 +49,34 @@ type Field struct {
 	Unique    bool `xml:"unique,attr,omitempty"`
 
 	Field []*Field
+}
 
-	xquery []*xmlpath.Path `xml:"-"`
-	parent *Field          `xml:"-"`
+type CompiledField struct {
+	title    string
+	dataType *Type
+	path     []*xmlpath.Path
+	data     *CompiledRegexRules
+	parent   *CompiledField
+
+	optional  bool `xml:"optional,attr,omitempty"`
+	dontStore bool `xml:"dontstore,attr,omitempty"`
+	multiple  bool `xml:"multiple,attr,omitempty"`
+	unique    bool `xml:"unique,attr,omitempty"`
+
+	field []*CompiledField
 }
 
 type PatternNode map[string]interface{}
 
 type Patterns struct {
-	HtmlPatternTree *PatternNode
-	Log             *descry.Logger
+	Tree *PatternNode
+	Log  *log.Logger
 }
 
-func NewPatterns(log *descry.Logger) *Patterns {
-	//	log := logging.NewLogger()
-	//	log.Level = logging.LEVEL_DEBUG
+func NewPatterns(log *log.Logger) *Patterns {
 	return &Patterns{
-		HtmlPatternTree: &PatternNode{}, //make(map[string]interface{}),
-		//HtmlMaps: make(map[string]*HtmlMap),
+		Tree: &PatternNode{}, //make(map[string]interface{}),
+		//Maps: make(map[string]*Map),
 		Log: log,
 	}
 }
@@ -95,40 +108,41 @@ func (f *Field) FindField(addr string) *Field {
 }
 
 // build "parent" dependency
-func (f *Field) setParent() {
-	for _, field := range f.Field {
+func (f *CompiledField) setParent() {
+	for _, field := range f.field {
 		field.parent = f
 		field.setParent()
 	}
 }
 
-func (f *HtmlMap) Unmarshal(data []byte) error {
+func (f *Map) Unmarshal(data []byte) error {
 	err := xml.Unmarshal(data, &f)
 	if err != nil {
 		return err
 	}
-	f.Field.setParent()
+	//f.Field.setParent()
 	return nil
 }
 
-func (f *HtmlMap) Marshal() ([]byte, error) {
+func (f *Map) Marshal() ([]byte, error) {
 	return xml.Marshal(&f)
 }
 
 // get relative path like: "Root.SubField1.Subfield2..."
-func (f *Field) Path() string {
+func (f *CompiledField) RelativePath() string {
 	if f.parent == nil {
-		return f.Title
+		return f.title
 	} else {
-		return f.parent.Path() + "." + f.Title
+		return f.parent.RelativePath() + "." + f.title
 	}
 }
 
-func (t *Type) Compile() error {
-	if strings.Contains(t.Name, "[]") {
+func CompileType(typeName string) (*Type, error) {
+	t := &Type{}
+	if strings.Contains(typeName, "[]") {
 		t.isArray = true
 	}
-	typeName := strings.Replace(t.Name, "[]", "", -1)
+	typeName = strings.Replace(typeName, "[]", "", -1)
 
 	switch typeName {
 	case "int":
@@ -142,49 +156,73 @@ func (t *Type) Compile() error {
 	case "struct":
 		t.kind = reflect.Struct
 	default:
-		return errors.New("Unrecognized type " + typeName)
+		t.kind = reflect.Struct
+		return t, errors.New("Unrecognized type " + typeName)
 	}
-	return nil
+	return t, nil
 }
 
-func (f *Field) Compile() error {
-	for _, x := range f.XPath {
-		query, err := xmlpath.Compile(x)
-		if err != nil {
-			e := errors.New(err.Error() + "\n Path: " + x)
-			return e
-		}
-		f.xquery = append(f.xquery, query)
-	}
+func (f *Field) Compile() (*CompiledField, error) {
+	c := &CompiledField{}
+	c.path = make([]*xmlpath.Path, 0)
 
-	err := f.DataRules.Compile()
-	if err != nil {
-		return err
-	}
-	for _, c := range f.Field {
-		err := c.Compile()
-		if err != nil {
-			return err
+	paths := lineSplit.Split(f.Path, -1)
+	for _, x := range paths {
+		if x != "" {
+			query, err := xmlpath.Compile(x)
+			if err != nil {
+				e := errors.New(err.Error() + "\n Path: " + x)
+				return nil, e
+			}
+			c.path = append(c.path, query)
 		}
 	}
 
-	if f.Type == nil {
-		return errors.New("Failed to compile " + f.Title + ". Field missing type")
-	}
-
-	err = f.Type.Compile()
+	var err error
+	c.data, err = f.Data.Compile()
 	if err != nil {
-		return err
+		return nil, err
+	}
+	c.field = make([]*CompiledField, 0)
+	for _, field := range f.Field {
+		compiledField, err := field.Compile()
+		if err != nil {
+			return nil, err
+		}
+		c.field = append(c.field, compiledField)
 	}
 
-	return nil
+	if f.Type == "" {
+		return nil, errors.New("Failed to compile " + f.Title + ". Field missing type")
+	}
+
+	c.dataType, err = CompileType(f.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	c.title = f.Title
+	c.unique = f.Unique
+	c.dontStore = f.DontStore
+	c.multiple = f.Multiple
+	c.optional = f.Optional
+
+	return c, nil
 }
 
-type HtmlMap struct {
-	Title    string `xml:"title,attr"`
-	Storage  string `xml:"storage,attr,omitempty"`
-	Field    *Field
-	URLRules *RegexRules
+type Map struct {
+	//	Title   string `xml:"title,attr"`
+	Storage string `xml:"storage,attr,omitempty"`
+	Field   *Field
+	URL     *RegexRules
+	Mime    string `xml:"mime,attr"`
+}
+
+type CompiledMap struct {
+	title   string
+	storage string
+	field   *CompiledField
+	url     *CompiledRegexRules
 }
 
 func hasExt(fileName, ext string) bool {
@@ -203,32 +241,30 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 			new_el := &PatternNode{}
 			err := p.LoadTree(new_el, path+"/"+itemName)
 			if err != nil {
-				p.Log.IsError("", err)
+				p.Log.Println(err)
 			}
 			map[string]interface{}(*el)[itemName] = new_el
 		} else {
 			data, err := ioutil.ReadFile(path + "/" + itemName)
 			if hasExt(itemName, "xml") {
 				if err != nil {
-					p.Log.IsError("", err)
+					p.Log.Println(err)
 				} else {
-					next_pattern := &HtmlMap{}
+					next_pattern := &Map{}
 					err := next_pattern.Unmarshal(data)
 					if err != nil {
-						p.Log.IsError("Pattern "+path+"/"+itemName+" compilation error", err)
+						p.Log.Println("Pattern "+path+"/"+itemName+" compilation error", err)
 					} else {
-
 						// set default type for root element
-						if next_pattern.Field.Type == nil {
-							next_pattern.Field.Type = &Type{Name: "struct"}
+						if next_pattern.Field.Type == "" {
+							next_pattern.Field.Type = "struct"
 						}
-						err = next_pattern.Compile()
+						compiledPattern, err := next_pattern.Compile()
 						if err != nil {
-							p.Log.IsError("Pattern compilation error: ", err)
+							p.Log.Println("Pattern compilation error: ", err)
 						} else {
-							map[string]interface{}(*el)[itemName] = next_pattern
+							map[string]interface{}(*el)[itemName] = compiledPattern
 						}
-
 					}
 				}
 			}
@@ -237,22 +273,31 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 	return nil
 }
 
-func (p *HtmlMap) Compile() error {
-	err := p.URLRules.Compile()
-	if err != nil {
-		return err
-	}
+func (p *Map) Compile() (interface{}, error) { //(*CompiledMap, error) {
+	if p.Mime == "html" {
+		m := &CompiledMap{}
+		var err error
+		m.url, err = p.URL.Compile()
+		if err != nil {
+			return nil, err
+		}
 
-	return p.Field.Compile()
+		m.field, err = p.Field.Compile()
+		if err != nil {
+			return nil, err
+		}
+		return m, nil
+	}
+	return nil, nil
 }
 
-func (p *RegexRules) Test(s []byte) bool {
+func (p *CompiledRegexRules) Test(s []byte) bool {
 	if p != nil {
 		// URL must apply to at least one "include" patern
-		count := len(p.regexIncludeCompiled)
+		count := len(p.Include)
 
 		if count > 0 {
-			for _, r := range p.regexIncludeCompiled {
+			for _, r := range p.Include {
 				if r.Match(s) {
 					break
 				} else {
@@ -264,7 +309,7 @@ func (p *RegexRules) Test(s []byte) bool {
 			}
 		}
 
-		for _, r := range p.regexExcludeCompiled {
+		for _, r := range p.Exclude {
 			if r.Match(s) {
 				return false
 			}
@@ -273,10 +318,10 @@ func (p *RegexRules) Test(s []byte) bool {
 	return true
 }
 
-func (p *RegexRules) FindOne(s []byte) []byte {
+func (p *CompiledRegexRules) FindOne(s []byte) []byte {
 	if p != nil {
-		if p.regexSubmatchCompiled != nil {
-			res := p.regexSubmatchCompiled.FindSubmatch(s)
+		if p.Submatch != nil {
+			res := p.Submatch.FindSubmatch(s)
 			if len(res) > 0 {
 				return res[1]
 			}
@@ -286,10 +331,10 @@ func (p *RegexRules) FindOne(s []byte) []byte {
 	return s
 }
 
-func (p *RegexRules) FindMultiple(s []byte) [][]byte {
+func (p *CompiledRegexRules) FindMultiple(s []byte) [][]byte {
 	if p != nil {
-		if p.regexSubmatchCompiled != nil {
-			found := p.regexSubmatchCompiled.FindAllSubmatch(s, -1)
+		if p.Submatch != nil {
+			found := p.Submatch.FindAllSubmatch(s, -1)
 			res := make([][]byte, len(found))
 			for i, pair := range found {
 				res[i] = pair[1]
@@ -300,12 +345,9 @@ func (p *RegexRules) FindMultiple(s []byte) [][]byte {
 	return [][]byte{s}
 }
 
-func (p *RegexRules) Clean(s []byte) []byte {
+func (p *CompiledRegexRules) Clean(s []byte) []byte {
 	if p != nil {
-		//if p.regexSubmatchCompiled != nil {
-		//	s = p.regexSubmatchCompiled.Find(s)
-		//}
-		for _, r := range p.regexRemoveCompiled {
+		for _, r := range p.Remove {
 			if r != nil {
 				s = r.ReplaceAll(s, []byte{})
 			}
@@ -314,68 +356,58 @@ func (p *RegexRules) Clean(s []byte) []byte {
 	return s
 }
 
-func (p *RegexRules) Compile() error {
+func (p *RegexRules) Compile() (*CompiledRegexRules, error) {
+	c := &CompiledRegexRules{}
+	var err error
 	if p != nil {
-		if p.RegexSubmatch != "" {
-			text, err := strconv.Unquote(`"` + p.RegexSubmatch + `"`)
+		if p.Submatch != "" {
+			c.Submatch, err = regexp.Compile(p.Submatch)
 			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Submatch' expression: " + p.RegexSubmatch)
-				return e
-			}
-
-			p.regexSubmatchCompiled, err = regexp.Compile(text)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Submatch' expression: " + p.RegexSubmatch)
-				return e
+				e := errors.New(err.Error() + "\n Regex 'Submatch' expression: " + p.Submatch)
+				return nil, e
 			}
 		}
-		p.regexExcludeCompiled = make([]*regexp.Regexp, 0)
-		for _, r := range p.RegexExclude {
-			text, err := strconv.Unquote(`"` + r + `"`)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Exclude' expression: " + r)
-				return e
-			}
 
-			compiled, err := regexp.Compile(text)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Exclude' expression: " + r)
-				return e
+		c.Exclude = make([]*regexp.Regexp, 0)
+		excludeRules := lineSplit.Split(p.Exclude, -1)
+		for _, r := range excludeRules {
+			if r != "" {
+				compiled, err := regexp.Compile(r)
+				if err != nil {
+					e := errors.New(err.Error() + "\n Regex 'Exclude' expression: " + r)
+					return nil, e
+				}
+				c.Exclude = append(c.Exclude, compiled)
 			}
-			p.regexExcludeCompiled = append(p.regexExcludeCompiled, compiled)
 		}
-		p.regexIncludeCompiled = make([]*regexp.Regexp, 0)
-		for _, r := range p.RegexInclude {
-			text, err := strconv.Unquote(`"` + r + `"`)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Include' expression: " + r)
-				return e
-			}
 
-			compiled, err := regexp.Compile(text)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Include' expression: " + r)
-				return e
+		c.Include = make([]*regexp.Regexp, 0)
+		includeRules := lineSplit.Split(p.Include, -1)
+		for _, r := range includeRules {
+			if r != "" {
+				compiled, err := regexp.Compile(r)
+				if err != nil {
+					e := errors.New(err.Error() + "\n Regex 'Include' expression: " + r)
+					return nil, e
+				}
+				c.Include = append(c.Include, compiled)
 			}
-			p.regexIncludeCompiled = append(p.regexIncludeCompiled, compiled)
 		}
-		p.regexRemoveCompiled = make([]*regexp.Regexp, 0)
-		for _, r := range p.RegexRemove {
-			text, err := strconv.Unquote(`"` + r + `"`)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Remove' expression: " + r)
-				return e
-			}
 
-			compiled, err := regexp.Compile(text)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Regex 'Remove' expression: " + r)
-				return e
+		c.Remove = make([]*regexp.Regexp, 0)
+		removeRules := lineSplit.Split(p.Remove, -1)
+		for _, r := range removeRules {
+			if r != "" {
+				compiled, err := regexp.Compile(r)
+				if err != nil {
+					e := errors.New(err.Error() + "\n Regex 'Remove' expression: " + r)
+					return nil, e
+				}
+				c.Remove = append(c.Remove, compiled)
 			}
-			p.regexRemoveCompiled = append(p.regexRemoveCompiled, compiled)
 		}
 	}
-	return nil
+	return c, nil
 }
 
 func ByteToKind(t reflect.Kind, data []byte) (interface{}, error) {
@@ -399,28 +431,28 @@ func ByteToKind(t reflect.Kind, data []byte) (interface{}, error) {
 	return nil, nil
 }
 
-func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
+func (f *CompiledField) Retrieve(root *xmlpath.Node) (result interface{}) {
 	// is "f" has no children and so is simple type, like: int, string, float64, etc.
-	if f.Type.kind != reflect.Struct {
-		// check every XPath provided
-		for _, query := range f.xquery {
-			if f.Type.isArray {
+	if f.dataType.kind != reflect.Struct {
+		// check every Path provided
+		for _, query := range f.path {
+			if f.dataType.isArray {
 				res := make([]interface{}, 0)
 				iter := query.Iter(root)
 				for iter.Next() {
 					// try to find each context
 					bts := iter.Node().Bytes()
-					test := f.DataRules.Test(bts)
+					test := f.data.Test(bts)
 					if test {
-						found := f.DataRules.FindMultiple(bts)
+						found := f.data.FindMultiple(bts)
 						for _, nextVal := range found {
-							cut := f.DataRules.Clean(nextVal)
-							val, err := ByteToKind(f.Type.kind, cut)
+							cut := f.data.Clean(nextVal)
+							val, err := ByteToKind(f.dataType.kind, cut)
 							if err != nil {
 								// cannot convert
 								//fmt.Println(err)
 							} else {
-								if f.Unique {
+								if f.unique {
 									unique := true
 									for _, v := range res {
 										// not sure if it will work???
@@ -442,12 +474,12 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 			} else {
 				val, ok := query.Bytes(root)
 				if ok {
-					test := f.DataRules.Test(val)
+					test := f.data.Test(val)
 					if test {
-						cut := f.DataRules.Clean(val)
-						found := f.DataRules.FindOne(cut)
+						cut := f.data.Clean(val)
+						found := f.data.FindOne(cut)
 						var err error
-						result, err = ByteToKind(f.Type.kind, found)
+						result, err = ByteToKind(f.dataType.kind, found)
 						if err != nil {
 							// cant convert
 							//fmt.Println(err)
@@ -456,30 +488,30 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 				}
 			}
 
-			// exit if at least 1 value found for XPath
+			// exit if at least 1 value found for Path
 			if result != nil {
 				return result
 			}
 		}
 	} else {
-		if f.Type.isArray {
+		if f.dataType.isArray {
 			res := make([]interface{}, 0)
 			// only one path available works for struct
-			iter := f.xquery[0].Iter(root)
+			iter := f.path[0].Iter(root)
 			for iter.Next() {
 				// try to find each context
 				context := iter.Node()
 				val := make(map[string]interface{})
-				for _, child_field := range f.Field {
+				for _, child_field := range f.field {
 					r := child_field.Retrieve(context)
 
-					if r == nil && !child_field.Optional {
+					if r == nil && !child_field.optional {
 						//result = nil
 						val = nil
 						break
 					}
 
-					val[child_field.Title] = r
+					val[child_field.title] = r
 				}
 				if val != nil {
 					res = append(res, val)
@@ -488,18 +520,18 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 			result = res
 		} else {
 			val := make(map[string]interface{})
-			iter := f.xquery[0].Iter(root)
+			iter := f.path[0].Iter(root)
 			if iter.Next() {
-				for _, child_field := range f.Field {
+				for _, child_field := range f.field {
 					r := child_field.Retrieve(iter.Node())
 
-					if r == nil && !child_field.Optional {
+					if r == nil && !child_field.optional {
 						//result = nil
 						val = nil
 						break
 					}
 
-					val[child_field.Title] = r
+					val[child_field.title] = r
 				}
 				if val != nil {
 					result = val
@@ -511,20 +543,20 @@ func (f *Field) Retrieve(root *xmlpath.Node) (result interface{}) {
 	return result
 }
 
-func (p *HtmlMap) ApplyHtml(url string, context *xmlpath.Node) interface{} {
+func (p *CompiledMap) ApplyHtml(url string, context *xmlpath.Node) interface{} {
 	// source URL should be either empty or fit current URL pattern
 
 	if url != "" {
-		if !p.URLRules.Test([]byte(url)) {
+		if !p.url.Test([]byte(url)) {
 			return nil
 		}
 	}
 
 	// retrieve data for root field
-	data := p.Field.Retrieve(context)
+	data := p.field.Retrieve(context)
 	if data != nil {
 		n := make(map[string]interface{})
-		n[p.Field.Title] = data
+		n[p.field.title] = data
 		return n
 	}
 
@@ -537,15 +569,15 @@ func (p *Patterns) Apply(url string, content io.Reader) (map[string]interface{},
 		return nil, err
 	}
 
-	return p.HtmlPatternTree.ApplyHtmlPatterns(url, data), nil
+	return p.Tree.ApplyPatterns(url, data), nil
 }
 
 // Applies XML patterns to input (URL "address" and HTML "content").
 // Returns map with result data.
-func (pn *PatternNode) ApplyHtmlPatterns(url string, data *xmlpath.Node /*content io.Reader*/) map[string]interface{} {
+func (pn *PatternNode) ApplyPatterns(url string, data *xmlpath.Node /*content io.Reader*/) map[string]interface{} {
 	var el map[string]interface{}
 	for key, val := range *pn {
-		if pattern, ok := val.(*HtmlMap); ok {
+		if pattern, ok := val.(*CompiledMap); ok {
 			if res := pattern.ApplyHtml(url, data); res != nil {
 				if el == nil {
 					el = make(map[string]interface{})
@@ -553,7 +585,7 @@ func (pn *PatternNode) ApplyHtmlPatterns(url string, data *xmlpath.Node /*conten
 				el[key] = res
 			}
 		} else if subPattern, ok := val.(*PatternNode); ok {
-			if res := subPattern.ApplyHtmlPatterns(url, data); res != nil {
+			if res := subPattern.ApplyPatterns(url, data); res != nil {
 				if el == nil {
 					el = make(map[string]interface{})
 				}
@@ -569,7 +601,7 @@ func (pn *PatternNode) ApplyHtmlPatterns(url string, data *xmlpath.Node /*conten
 func (pn *PatternNode) ListPatterns() []string {
 	res := []string{}
 	for key, val := range *pn {
-		if _, ok := val.(*HtmlMap); ok {
+		if _, ok := val.(*Map); ok {
 			res = append(res, key)
 		} else if subPattern, ok := val.(*PatternNode); ok {
 			children := subPattern.ListPatterns()

@@ -1,1 +1,0 @@
-<Pattern title="FirstSource">	<URLRules>    <!-- we set up Regex rule to include only URLs we need -->		<RegexInclude>^http://www.first-source.com/pages/example.html$</RegexInclude>	</URLRules>	<Field title="Link">		<XPath>//ul/li[@class='list-item']/a/@href</XPath>		<!-- Type []string here means we expect to get list of strings -->    	<Type name="string[]" />	</Field></Pattern>

@@ -1,0 +1,17 @@
+<Pattern title="AmazonProduct">
+	<URLRules>
+		<RegexInclude>^https://www.amazon.com/dp/[A-Z0-9]+.*?$</RegexInclude>
+	</URLRules>
+	<Field title="Item">
+		<XPath>//div[@id="dp"]</XPath>
+		<Type name="struct" />
+		<Field title="Title">
+			<XPath>//h1[@id='title']/span</XPath>
+			<Type name="string" />
+			<DataRules>
+				<RegexRemove>^[\\x20\\x09\\x0D\\x0A]+</RegexRemove>   
+				<RegexRemove>[\\x20\\x09\\x0D\\x0A]+$</RegexRemove>
+			</DataRules>
+		</Field>
+	</Field>
+</Pattern>
