@@ -273,7 +273,7 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 	return nil
 }
 
-func (p *Map) Compile() (interface{}, error) { //(*CompiledMap, error) {
+func (p *Map) Compile() (*CompiledMap, error) { //(interface{}, error) {
 	if p.Mime == "html" {
 		m := &CompiledMap{}
 		var err error
