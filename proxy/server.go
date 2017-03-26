@@ -18,10 +18,10 @@ import (
 )
 
 type ProxyInterceptor struct {
-	handler func(header, body *bytes.Buffer)
+	handler func(header, body *bytes.Buffer) io.ReadCloser
 }
 
-func NewProxyInterceptor(h func(header, body *bytes.Buffer)) *ProxyInterceptor {
+func NewProxyInterceptor(h func(header, body *bytes.Buffer) io.ReadCloser) *ProxyInterceptor {
 	return &ProxyInterceptor{h}
 }
 
@@ -69,8 +69,8 @@ func (i *ProxyInterceptor) Listen() {
 
 					buf, _ := ioutil.ReadAll(ctx.Resp.Body)
 					rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
-					rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
-					ctx.Resp.Body = rdr2
+					//rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
+					//ctx.Resp.Body = rdr2
 
 					var header, body []byte
 					headerBuffer := bytes.NewBuffer(header)
@@ -79,7 +79,7 @@ func (i *ProxyInterceptor) Listen() {
 					io.Copy(bodyBuffer, rdr1)
 					rdr1.Close()
 
-					i.handler(headerBuffer, bodyBuffer)
+					ctx.Resp.Body = i.handler(headerBuffer, bodyBuffer)
 				}
 			}
 		}

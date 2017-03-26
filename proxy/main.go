@@ -4,7 +4,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	//	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -20,23 +22,24 @@ func main() {
 		logger.Panic(err)
 	}
 
-	var getRequestUrl = regexp.MustCompile(`(GET|POST|PUT|HEAD|DELETE|OPTIONS)\s+(.+)\s+(HTTP)`)
-	interceptor := NewProxyInterceptor(func(header, body *bytes.Buffer) {
-		url := string(getRequestUrl.FindAllSubmatch(header.Bytes(), -1)[0][2])
+	interceptor := NewProxyInterceptor(func(header, body *bytes.Buffer) io.ReadCloser {
+		url := string(regexp.MustCompile(`(GET|POST|PUT|HEAD|DELETE|OPTIONS)\s+(.+)\s+(HTTP)`).FindAllSubmatch(header.Bytes(), -1)[0][2])
 		node, err := patterns.Apply(url, body)
 		if err != nil {
 			logger.Println("Error applying patterns: ", err.Error())
-			return
+			return nil
 		}
 
-		if node != nil {
-			recognized, err := json.Marshal(&node)
-			if err != nil {
-				logger.Println("Error marshalling to JSON: ", err.Error())
-			}
-
-			fmt.Println(string(recognized))
+		if node == nil {
+			node = make(map[string]interface{})
 		}
+		recognized, err := json.Marshal(&node)
+		if err != nil {
+			logger.Println("Error marshalling to JSON: ", err.Error())
+		}
+
+		return ioutil.NopCloser(bytes.NewBuffer(recognized))
+
 	})
 	interceptor.Listen()
 }
