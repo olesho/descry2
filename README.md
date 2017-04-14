@@ -7,6 +7,7 @@ Descry is a simple proxy server implementing interception of HTTP/HTTPS requests
 *** Build: ***
 
 ```
+cd proxy
 docker build -t descry .
 ```
 
@@ -28,9 +29,15 @@ docker run -v ~/work/src/github.com/olesho/descry2/patterns:/go/src/app/patterns
 
 *** Usage: ***
 
-1. Create XML pattern and put into your patterns directory.
+1. Create XML pattern and put into your patterns directory. Pattern examples (for Craiglist and Amazon) you can find in in "patterns" directory.
 2. Reload patterns by simply running HTTP GET request to /
-3. Use as a proxy: running HTTP/HTTPS request via this proxy will return JSON with data fields.
+3. Use as a proxy: running HTTP/HTTPS request via this proxy will return JSON with data fields. For example this CURL request:
+
+```
+curl -x http://localhost:5000 https://sacramento.craigslist.org/search/csr -k
+```
+
+will return JSON data containing all positions list.
 
 ### Contribution guidelines ###
 
