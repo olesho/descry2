@@ -4,25 +4,23 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"flag"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/elazarl/goproxy"
-	//	"github.com/gorilla/mux"
 )
 
 type ProxyInterceptor struct {
-	handler func(header, body *bytes.Buffer) io.ReadCloser
+	proxyHandler   func(header, body *bytes.Buffer) io.ReadCloser
+	controlHandler func(w http.ResponseWriter, r *http.Request)
 }
 
-func NewProxyInterceptor(h func(header, body *bytes.Buffer) io.ReadCloser) *ProxyInterceptor {
-	return &ProxyInterceptor{h}
+func NewProxyInterceptor(h func(header, body *bytes.Buffer) io.ReadCloser, c func(w http.ResponseWriter, r *http.Request)) *ProxyInterceptor {
+	return &ProxyInterceptor{h, c}
 }
 
 func orPanic(err error) {
@@ -31,8 +29,11 @@ func orPanic(err error) {
 	}
 }
 
-func (i *ProxyInterceptor) Listen() {
+func (i *ProxyInterceptor) Listen(port string, verbose bool) error {
 	proxy := goproxy.NewProxyHttpServer()
+
+	proxy.NonproxyHandler = http.HandlerFunc(http.HandlerFunc(i.controlHandler))
+
 	proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.*$"))).
 		HandleConnect(goproxy.AlwaysMitm)
 		// enable curl -p for all hosts on port 80
@@ -79,7 +80,7 @@ func (i *ProxyInterceptor) Listen() {
 					io.Copy(bodyBuffer, rdr1)
 					rdr1.Close()
 
-					ctx.Resp.Body = i.handler(headerBuffer, bodyBuffer)
+					ctx.Resp.Body = i.proxyHandler(headerBuffer, bodyBuffer)
 				}
 			}
 		}
@@ -87,21 +88,6 @@ func (i *ProxyInterceptor) Listen() {
 		return r
 	})
 
-	verbose := flag.Bool("v", false, "should every proxy request be logged to stdout")
-	addr := flag.String("addr", ":8080", "proxy listen address")
-	flag.Parse()
-	proxy.Verbose = *verbose
-
-	//go func() {
-	log.Fatal(http.ListenAndServe(*addr, proxy))
-	//}()
-
-	/*
-		controller := mux.NewRouter()
-		controller.HandleFunc("/test", func(res http.ResponseWriter, req *http.Request) {
-			res.Write([]byte("Hello test"))
-			res.WriteHeader(200)
-		})
-		log.Fatal(http.ListenAndServeTLS(":	8081", "cert/publickey.cer", "cert/private.key", controller))
-	*/
+	proxy.Verbose = verbose
+	return http.ListenAndServe(":"+port, proxy)
 }
