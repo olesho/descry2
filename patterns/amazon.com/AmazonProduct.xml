@@ -1,0 +1,73 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^https://www.amazon.com/dp/[A-Z0-9]+.*?$
+		]]></Include>
+	</URL>
+	<Field title="Item" type="struct">
+		<Path><![CDATA[
+			//div[@id="dp"]
+		]]></Path>
+		<Field title="Title" type="[]string">
+			<Path>
+				<![CDATA[
+					//h1[@id='title']/span
+				]]>
+			</Path>
+			<Data>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+				]]></Remove>
+			</Data>
+		</Field>
+		<Field title="Size" type="[]string">
+			<Path><![CDATA[
+				//div[@id='variation_size_name']//select/option
+			]]></Path>
+			<Data>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+				]]></Remove>
+			</Data>
+		</Field>
+		<Field title="Price" type="string">
+			<Path><![CDATA[
+				//tr[@id='priceblock_ourprice_row']//span[@id='priceblock_ourprice']
+			]]></Path>
+		</Field>
+		<Field title="Description" type="string" optional="true">
+			<Path><![CDATA[
+				//div[@id='productDescription']//*[text()]
+			]]></Path>
+			<Data>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+				]]></Remove>
+			</Data>
+		</Field>
+		<Field title="Colors" type="[]string">
+			<Path><![CDATA[
+				//li[@class='swatchAvailable']/@data-dp-url
+			]]></Path>
+			<Data>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+				]]></Remove>
+			</Data>
+		</Field>
+		<Field title="Images" type="[]string">
+			<Path><![CDATA[
+				//script
+			]]></Path>
+			<Data>
+				<Submatch><![CDATA[
+					https(.+)jpg
+				]]></Submatch>
+			</Data>
+		</Field>
+	</Field>
+</Pattern>
