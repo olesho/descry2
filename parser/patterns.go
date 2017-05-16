@@ -16,7 +16,10 @@ import (
 	"gopkg.in/xmlpath.v2"
 )
 
-var lineSplit = regexp.MustCompile(`[\s\n]+`)
+var lineSplit = regexp.MustCompile(`\n+`)
+
+//var lineStripPre = regexp.MustCompile(`^[\t\s]`)
+//var lineStripPost = regexp.MustCompile(`[\t\s]$`)
 
 type RegexRules struct {
 	Submatch string
@@ -164,21 +167,13 @@ func CompileType(typeName string) (*Type, error) {
 
 func (f *Field) Compile() (*CompiledField, error) {
 	c := &CompiledField{}
-	c.path = make([]*xmlpath.Path, 0)
-
-	paths := lineSplit.Split(f.Path, -1)
-	for _, x := range paths {
-		if x != "" {
-			query, err := xmlpath.Compile(x)
-			if err != nil {
-				e := errors.New(err.Error() + "\n Path: " + x)
-				return nil, e
-			}
-			c.path = append(c.path, query)
-		}
-	}
 
 	var err error
+	c.path, err = cdataToPaths(f.Path)
+	if err != nil {
+		return nil, err
+	}
+
 	c.data, err = f.Data.Compile()
 	if err != nil {
 		return nil, err
@@ -368,43 +363,65 @@ func (p *RegexRules) Compile() (*CompiledRegexRules, error) {
 			}
 		}
 
-		c.Exclude = make([]*regexp.Regexp, 0)
-		excludeRules := lineSplit.Split(p.Exclude, -1)
-		for _, r := range excludeRules {
-			if r != "" {
-				compiled, err := regexp.Compile(r)
-				if err != nil {
-					e := errors.New(err.Error() + "\n Regex 'Exclude' expression: " + r)
-					return nil, e
+		/*
+			c.Exclude = make([]*regexp.Regexp, 0)
+			excludeRules := lineSplit.Split(p.Exclude, -1)
+			for _, r := range excludeRules {
+				if r != "" {
+					compiled, err := regexp.Compile(r)
+					if err != nil {
+						e := errors.New(err.Error() + "\n Regex 'Exclude' expression: " + r)
+						return nil, e
+					}
+					c.Exclude = append(c.Exclude, compiled)
 				}
-				c.Exclude = append(c.Exclude, compiled)
 			}
+		*/
+
+		c.Exclude, err = cdataToRegex(p.Exclude)
+		if err != nil {
+			e := errors.New("Regex 'Exclude' error:" + err.Error())
+			return nil, e
 		}
 
-		c.Include = make([]*regexp.Regexp, 0)
-		includeRules := lineSplit.Split(p.Include, -1)
-		for _, r := range includeRules {
-			if r != "" {
-				compiled, err := regexp.Compile(r)
-				if err != nil {
-					e := errors.New(err.Error() + "\n Regex 'Include' expression: " + r)
-					return nil, e
+		/*
+			c.Include = make([]*regexp.Regexp, 0)
+			includeRules := lineSplit.Split(p.Include, -1)
+			for _, r := range includeRules {
+				if r != "" {
+					compiled, err := regexp.Compile(r)
+					if err != nil {
+						e := errors.New(err.Error() + "\n Regex 'Include' expression: " + r)
+						return nil, e
+					}
+					c.Include = append(c.Include, compiled)
 				}
-				c.Include = append(c.Include, compiled)
 			}
+		*/
+		c.Include, err = cdataToRegex(p.Include)
+		if err != nil {
+			e := errors.New("Regex 'Include' error:" + err.Error())
+			return nil, e
 		}
 
-		c.Remove = make([]*regexp.Regexp, 0)
-		removeRules := lineSplit.Split(p.Remove, -1)
-		for _, r := range removeRules {
-			if r != "" {
-				compiled, err := regexp.Compile(r)
-				if err != nil {
-					e := errors.New(err.Error() + "\n Regex 'Remove' expression: " + r)
-					return nil, e
+		/*
+			c.Remove = make([]*regexp.Regexp, 0)
+			removeRules := lineSplit.Split(p.Remove, -1)
+			for _, r := range removeRules {
+				if r != "" {
+					compiled, err := regexp.Compile(r)
+					if err != nil {
+						e := errors.New(err.Error() + "\n Regex 'Remove' expression: " + r)
+						return nil, e
+					}
+					c.Remove = append(c.Remove, compiled)
 				}
-				c.Remove = append(c.Remove, compiled)
 			}
+		*/
+		c.Remove, err = cdataToRegex(p.Remove)
+		if err != nil {
+			e := errors.New("Regex 'Remove' error:" + err.Error())
+			return nil, e
 		}
 	}
 	return c, nil
@@ -612,4 +629,40 @@ func (pn *PatternNode) ListPatterns() []string {
 	}
 
 	return res
+}
+
+// CDATA to xml paths
+func cdataToPaths(data string) ([]*xmlpath.Path, error) {
+	paths := make([]*xmlpath.Path, 0)
+	lines := lineSplit.Split(data, -1)
+	for _, x := range lines {
+		x := strings.TrimSpace(x)
+		if len(x) > 0 {
+			query, err := xmlpath.Compile(x)
+			if err != nil {
+				e := errors.New(err.Error() + "\n Path: " + x)
+				return nil, e
+			}
+			paths = append(paths, query)
+		}
+	}
+	return paths, nil
+}
+
+// CDATA to regex rules
+func cdataToRegex(data string) ([]*regexp.Regexp, error) {
+	paths := make([]*regexp.Regexp, 0)
+	lines := lineSplit.Split(data, -1)
+	for _, x := range lines {
+		x := strings.TrimSpace(x)
+		if len(x) > 0 {
+			query, err := regexp.Compile(x)
+			if err != nil {
+				e := errors.New(err.Error() + "\n Path: " + x)
+				return nil, e
+			}
+			paths = append(paths, query)
+		}
+	}
+	return paths, nil
 }
