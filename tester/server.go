@@ -48,6 +48,18 @@ func orPanic(err error) {
 	}
 }
 
+// list current urls
+func (i *TestServer) ListJson() []byte {
+	r := make([]byte, 0)
+	r = append(r, []byte("{\"list\": [\n")...)
+	list := make([]string, 0)
+	i.storage.ListBody(func(k string, v []byte) {
+		list = append(list, "\""+k+"\"")
+	})
+	r = append(r, []byte(strings.Join(list, ",\n")+"\n]}")...)
+	return r
+}
+
 func (i *TestServer) Listen() {
 	proxy := goproxy.NewProxyHttpServer()
 	proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.*$"))).
@@ -117,16 +129,50 @@ func (i *TestServer) Listen() {
 	ui := mux.NewRouter()
 
 	ui.HandleFunc("/list", func(res http.ResponseWriter, req *http.Request) {
-		res.Write([]byte("{'list': [\n"))
-		i.storage.ListBody(func(k string, v []byte) {
-			res.Write([]byte("'" + k + "'\n"))
-		})
-		res.Write([]byte("]}"))
+		res.Write(i.ListJson())
+		res.Header().Set("Content-Type", "application/json")
 	})
 
-	ui.HandleFunc("/flush", func(res http.ResponseWriter, req *http.Request) {
+	ui.HandleFunc("/list/flush", func(res http.ResponseWriter, req *http.Request) {
 		err := i.storage.Flush()
-		res.Write(response(nil, err))
+		if err != nil {
+			res.Write(response(nil, err))
+		}
+		res.Write(i.ListJson())
+		res.Header().Set("Content-Type", "application/json")
+	})
+
+	ui.HandleFunc("/list/add", func(res http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+		byteUrl, err := ioutil.ReadAll(req.Body)
+		url := string(byteUrl)
+		if err != nil {
+			res.Write(response("", err))
+			return
+		}
+
+		client := &http.Client{}
+		r, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			res.Write(response("", err))
+			return
+		}
+		r.Header.Set("Upgrade-Insecure-Request", "1")
+		r.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36")
+		r.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+		r.Header.Set("Accept-Encoding", "gzip, deflate, sdch, br")
+		r.Header.Set("Accept-Language", "uk-UA,uk;q=0.8,ru;q=0.6,en-US;q=0.4,en;q=0.2")
+		rr, err := client.Do(r)
+		if err != nil {
+			res.Write(response("", err))
+			return
+		}
+		defer rr.Body.Close()
+		i.storage.SaveResponse(url, rr)
+
+		//res.Write(response(nil, err))
+		res.Write(i.ListJson())
+		res.Header().Set("Content-Type", "application/json")
 	})
 
 	ui.HandleFunc("/check", func(res http.ResponseWriter, req *http.Request) {

@@ -2,6 +2,11 @@
 package main
 
 import (
+	"compress/gzip"
+	"io"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/boltdb/bolt"
 )
 
@@ -25,9 +30,31 @@ func (s *BoltStorage) Close() {
 	s.Close()
 }
 
-func (s *BoltStorage) SaveBody(url string, body []byte) error {
+func (s *BoltStorage) SaveBody(url string, body []byte) error { //body []byte) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("body"))
+		return b.Put([]byte(url), body)
+	})
+}
+
+func (s *BoltStorage) SaveResponse(url string, resp *http.Response) error { //body []byte) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("body"))
+		var err error
+		var reader io.ReadCloser
+		switch resp.Header.Get("Content-Encoding") {
+		case "gzip":
+			reader, err = gzip.NewReader(resp.Body)
+			defer reader.Close()
+		default:
+			reader = resp.Body
+		}
+
+		body, err := ioutil.ReadAll(reader)
+		if err != nil {
+			return err
+		}
+
 		return b.Put([]byte(url), body)
 	})
 }
