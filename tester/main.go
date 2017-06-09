@@ -3,22 +3,25 @@ package main
 
 import (
 	"log"
-	"os"
+	//	"os"
 
-	"github.com/olesho/descry2/parser"
+	//	"github.com/olesho/descry2/parser"
 )
 
 func main() {
-	logger := log.New(os.Stdout, "", log.Lshortfile)
-	patterns := parser.NewPatterns(logger)
-	err := patterns.LoadTree(patterns.Tree, "patterns")
-	if err != nil {
-		logger.Panic(err)
-	}
+	//logger := log.New(os.Stdout, "", log.Lshortfile)
+	//	patterns := parser.NewPatterns(logger)
+	/*
+		err := patterns.LoadTree(patterns.Tree, "patterns")
+		if err != nil {
+			logger.Panic(err)
+		}
+	*/
 
 	server, err := NewTestServer()
 	if err != nil {
-		logger.Panic(err)
+		log.Panic(err)
+		//logger.Panic(err)
 	}
 	server.Listen()
 }

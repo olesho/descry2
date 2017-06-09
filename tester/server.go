@@ -160,7 +160,7 @@ func (i *TestServer) Listen() {
 		r.Header.Set("Upgrade-Insecure-Request", "1")
 		r.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36")
 		r.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-		r.Header.Set("Accept-Encoding", "gzip, deflate, sdch, br")
+		//r.Header.Set("Accept-Encoding", "gzip, deflate, sdch, br")
 		r.Header.Set("Accept-Language", "uk-UA,uk;q=0.8,ru;q=0.6,en-US;q=0.4,en;q=0.2")
 		rr, err := client.Do(r)
 		if err != nil {
