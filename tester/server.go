@@ -17,8 +17,9 @@ import (
 
 	"github.com/elazarl/goproxy"
 	"github.com/gorilla/mux"
-	"github.com/olesho/descry2/parser"
-	"gopkg.in/xmlpath.v2"
+	"github.com/olesho/descry2.1/parser"
+	"golang.org/x/net/html"
+	//"gopkg.in/xmlpath.v2"
 )
 
 var getRequestUrl = regexp.MustCompile(`(GET|POST|PUT|HEAD|DELETE|OPTIONS)\s+(.+)\s+(HTTP)`)
@@ -200,7 +201,8 @@ func (i *TestServer) Listen() {
 		result := []interface{}{}
 		i.storage.ListBody(func(k string, v []byte) {
 			buf := bytes.NewBuffer(v)
-			node, err := xmlpath.ParseHTML(buf)
+			//node, err := xmlpath.ParseHTML(buf)
+			node, err := html.Parse(buf)
 			if err != nil {
 				log.Println(err)
 			}

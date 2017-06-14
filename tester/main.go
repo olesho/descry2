@@ -5,7 +5,7 @@ import (
 	"log"
 	//	"os"
 
-	//	"github.com/olesho/descry2/parser"
+	//	"github.com/olesho/descry2.1/parser"
 )
 
 func main() {

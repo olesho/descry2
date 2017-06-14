@@ -12,7 +12,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/olesho/descry2/parser"
+	"github.com/olesho/descry2.1/parser"
 )
 
 func main() {
@@ -69,7 +69,7 @@ func main() {
 
 	}, func(w http.ResponseWriter, r *http.Request) {
 		// controller
-		// used to realod patterns
+		// used to reload patterns
 		patterns = parser.NewPatterns(logger)
 		err := patterns.LoadTree(patterns.Tree, *patternsDir)
 		if err != nil {
