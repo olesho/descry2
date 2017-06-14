@@ -4,14 +4,14 @@ Descry is a simple proxy server implementing interception of HTTP/HTTPS requests
 
 ### Docker setup ###
 
-*** Build: ***
+* Build: *
 
 ```
 cd proxy
 docker build -t descry .
 ```
 
-*** Run: ***
+* Run: *
 
 Map "/go/src/app/patterns" dir in container to your patterns directory.
 Map port.
@@ -19,15 +19,15 @@ Map port.
 docker run -v ~/work/src/github.com/olesho/descry2/patterns:/go/src/app/patterns -p 5000:5000 --name descry --rm descry
 ```
 
-*** How to run tests: ***
+* How to run tests: *
 
-*** ENV variables: ***
+* ENV variables: *
 
 * PORT="5000" # Listen port. Default: 5000
 * PATTERNS_DIR="patterns" # Directory with XML patterns. Default value: 'patterns'
 * LOG="error.log" # Log file. STDOUT is used if value empty.
 
-*** Usage: ***
+* Usage: *
 
 1. Create XML pattern and put into your patterns directory. Pattern examples (for Craiglist and Amazon) you can find in in "patterns" directory.
 2. Reload patterns by simply running HTTP GET request to /
