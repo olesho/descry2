@@ -17,7 +17,7 @@ import (
 
 	"github.com/elazarl/goproxy"
 	"github.com/gorilla/mux"
-	"github.com/olesho/descry2.1/parser"
+	"github.com/olesho/descry2/parser"
 	"golang.org/x/net/html"
 	//"gopkg.in/xmlpath.v2"
 )
@@ -186,7 +186,7 @@ func (i *TestServer) Listen() {
 		}
 
 		next_pattern := &parser.Map{}
-		err = next_pattern.Unmarshal(data)
+		err = next_pattern.UnmarshalXml(data)
 		if err != nil {
 			res.Write(response("", err))
 			return

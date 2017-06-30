@@ -12,7 +12,7 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/olesho/descry2.1/parser"
+	"github.com/olesho/descry2/parser"
 )
 
 func main() {
