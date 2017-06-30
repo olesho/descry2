@@ -1,0 +1,43 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^http://ventureloop.com/ventureloop/jobdetail.php
+		]]></Include>
+	</URL>
+	<Field title="Body" type="struct">
+		<Path>
+			<![CDATA[
+				//div[@class='description']
+			]]>
+		</Path>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					.//h2
+				]]>
+			</Path>
+		</Field>
+		<Field title="Description" type="[]string">
+			<Path>
+				<![CDATA[
+					.//div[@class='cnt-des']/descendant::*/text()
+				]]>
+			</Path>
+			<Data>
+              	<Exclude>
+              		<![CDATA[
+						^[\x20\x09\x0D\x0A]+$
+						^$
+						Share this Job
+						Tweet this Job
+					]]>
+              	</Exclude>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+					[\x20\x09\x0D\x0A]+[\x20\x09\x0D\x0A]
+				]]></Remove>
+			</Data>
+		</Field>
+	</Field>
+</Pattern>

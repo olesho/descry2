@@ -1,0 +1,28 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^https://botjobs.io/jobs/search\?q=
+		]]></Include>
+	</URL>
+	<Field title="Item" type="[]struct">
+		<Path>
+			<![CDATA[
+				//li[@class='jobs--list--item']/div[@class='media']/div[@class='media-body']/a
+			]]>
+		</Path>
+		<Field title="Link" type="string">
+			<Path>
+				<![CDATA[
+					@href
+				]]>
+			</Path>
+		</Field>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					h3
+				]]>
+			</Path>
+		</Field>
+	</Field>
+</Pattern>

@@ -1,0 +1,28 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+			^http://www.builtincolorado.com/jobs$
+		]]></Include>
+	</URL>
+	<Field title="Item" type="[]struct">
+		<Path>
+			<![CDATA[
+				//div[@class='job-title']/a
+			]]>
+		</Path>
+		<Field title="Link" type="string">
+			<Path>
+				<![CDATA[
+					@href
+				]]>
+			</Path>
+		</Field>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					text()
+				]]>
+			</Path>
+		</Field>
+	</Field>
+</Pattern>

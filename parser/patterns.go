@@ -23,9 +23,9 @@ import (
 var lineSplit = regexp.MustCompile(`\n+`)
 
 type Type struct {
-	kind    reflect.Kind
-	isArray bool
-	isHtml  bool
+	kind reflect.Kind
+	//isArray bool
+	isHtml bool
 }
 
 type PatternNode map[string]interface{}
@@ -57,10 +57,6 @@ func (f *Map) Marshal() ([]byte, error) {
 
 func CompileType(typeName string) (*Type, error) {
 	t := &Type{}
-	if strings.Contains(typeName, "[]") {
-		t.isArray = true
-	}
-	typeName = strings.Replace(typeName, "[]", "", -1)
 
 	switch typeName {
 	case "int":
@@ -69,8 +65,6 @@ func CompileType(typeName string) (*Type, error) {
 		t.kind = reflect.String
 	case "float64":
 		t.kind = reflect.Float64
-	case "array":
-		t.kind = reflect.Slice
 	case "struct":
 		t.kind = reflect.Struct
 	case "html":
@@ -78,7 +72,7 @@ func CompileType(typeName string) (*Type, error) {
 		t.isHtml = true
 	default:
 		t.kind = reflect.Struct
-		return t, errors.New("Unrecognized type " + typeName)
+		//return t, errors.New("Unrecognized type " + typeName)
 	}
 	return t, nil
 }

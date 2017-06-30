@@ -4,6 +4,7 @@ package parser
 import (
 	"bytes"
 	"errors"
+	//"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -18,7 +19,7 @@ type Field struct {
 	// field title
 	Title string `xml:"title,attr"`
 
-	// field type: int, string, float64, array, struct, html
+	// field type: int, string, float64, struct, html
 	Type string `xml:"type,attr"`
 
 	// xpath expression to find field
@@ -161,21 +162,32 @@ func (f *CompiledField) Retrieve(root *html.Node) (result interface{}) {
 	if f.dataType.kind != reflect.Struct {
 		// check every Path provided
 		for _, query := range f.path {
-			if f.dataType.isArray {
-				res := make([]interface{}, 0)
-				iter := query.Evaluate(htmlquery.CreateXPathNavigator(root)).(*xpath.NodeIterator)
-				for iter.MoveNext() {
-					// try to find each context
-					bts := []byte(iter.Current().Value())
+			if f.multiple {
+				if f.dataType.isHtml {
+					res := make([]interface{}, 0)
+					var err error
+					htmlquery.FindEach(root, query.String(), func(n int, next *html.Node) {
+						// test include/exclude
+						if f.xdata.Test(htmlquery.CreateXPathNavigator(next)) {
+							// clean off unnecessary nodes
+							next = f.xdata.Clean(next)
 
-					test := f.data.Test(bts)
-					if test {
-						found := f.data.FindMultiple(bts)
-						for _, nextVal := range found {
-							cut := f.data.Clean(nextVal)
-							val, err := ByteToKind(f.dataType.kind, cut)
+							var buf bytes.Buffer
+							w := io.Writer(&buf)
+
+							if f.attr {
+								err = html.Render(w, next)
+							} else {
+								err = Render(w, next)
+							}
 							if err != nil {
-								// cannot convert
+								// cant render
+								//fmt.Println(err)
+							}
+
+							val, err := ByteToKind(f.dataType.kind, buf.Bytes())
+							if err != nil {
+								// cant convert
 								//fmt.Println(err)
 							} else {
 								if f.unique {
@@ -194,9 +206,46 @@ func (f *CompiledField) Retrieve(root *html.Node) (result interface{}) {
 								}
 							}
 						}
+					})
+					result = interface{}(res)
+				} else {
+					res := make([]interface{}, 0)
+					iter := query.Evaluate(htmlquery.CreateXPathNavigator(root)).(*xpath.NodeIterator)
+					for iter.MoveNext() {
+						// try to find each context
+						bts := []byte(iter.Current().Value())
+
+						test := f.data.Test(bts)
+						if test {
+							found := f.data.FindMultiple(bts)
+							for _, nextVal := range found {
+								cut := f.data.Clean(nextVal)
+								val, err := ByteToKind(f.dataType.kind, cut)
+								if err != nil {
+									// cannot convert
+									//fmt.Println(err)
+								} else {
+									if f.unique {
+										unique := true
+										for _, v := range res {
+											// not sure if it will work???
+											if v == val {
+												unique = false
+											}
+										}
+										if unique {
+											res = append(res, val)
+										}
+									} else {
+										res = append(res, val)
+									}
+								}
+							}
+						}
 					}
+					result = interface{}(res)
 				}
-				result = interface{}(res)
+
 			} else {
 				var err error
 				if f.dataType.isHtml {
@@ -251,7 +300,7 @@ func (f *CompiledField) Retrieve(root *html.Node) (result interface{}) {
 			}
 		}
 	} else {
-		if f.dataType.isArray {
+		if f.multiple {
 			res := make([]interface{}, 0)
 
 			// only one path available works for struct

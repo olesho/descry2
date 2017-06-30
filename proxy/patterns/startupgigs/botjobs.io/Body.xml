@@ -1,0 +1,43 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^https://botjobs.io/jobs/[a-z0-9-]+$
+		]]></Include>
+	</URL>
+	<Field title="Body" type="struct">
+		<Path>
+			<![CDATA[
+				//div[@class='row']
+			]]>
+		</Path>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					div[@class='col-md-7']/h3
+				]]>
+			</Path>
+		</Field>
+		<Field title="Description" type="[]string">
+			<Path>
+				<![CDATA[
+					div[@class='col-md-7']/descendant::*/text()
+				]]>
+			</Path>
+			<Data>
+              	<Exclude>
+              		<![CDATA[
+						^[\x20\x09\x0D\x0A]+$
+						^$
+						Share this Job
+						Tweet this Job
+					]]>
+              	</Exclude>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+					[\x20\x09\x0D\x0A]+[\x20\x09\x0D\x0A]
+				]]></Remove>
+			</Data>
+		</Field>
+	</Field>
+</Pattern>

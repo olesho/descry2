@@ -1,0 +1,14 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^https://www.f6s.com/jobs/[0-9]+/
+		]]></Include>
+	</URL>
+	<Field title="Body" type="string">
+		<Path>
+			<![CDATA[
+				//section[@class="mainarea"]/script[@type="application/ld+json"]
+			]]>
+		</Path>
+	</Field>
+</Pattern>

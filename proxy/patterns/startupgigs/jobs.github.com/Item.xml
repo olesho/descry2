@@ -1,0 +1,28 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+			^https://jobs.github.com/positions
+		]]></Include>
+	</URL>
+	<Field title="Item" type="[]struct">
+		<Path>
+			<![CDATA[
+				//table[@class='positionlist']/tbody/tr/td[@class='title']/h4
+			]]>
+		</Path>
+		<Field title="Link" type="string">
+			<Path>
+				<![CDATA[
+					a/@href
+				]]>
+			</Path>
+		</Field>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					a
+				]]>
+			</Path>
+		</Field>
+	</Field>
+</Pattern>

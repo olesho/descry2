@@ -1,0 +1,33 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+			^https://www.crunchboard.com/jobs/search
+		]]></Include>
+	</URL>
+	<Field title="Item" type="[]struct">
+		<Path>
+			<![CDATA[
+				//div[@class='panel panel-default panel-expand']/div[@class='panel-body']/ul[@class='jobList']/li/div[@class='jobList-introWrap']/div[@class='jobList-intro']
+			]]>
+		</Path>
+		<Include>
+			<![CDATA[
+				^/jobs/[0-9]{7}
+			]]>
+		</Include>
+		<Field title="Link" type="string">
+			<Path>
+				<![CDATA[
+					a/@href
+				]]>
+			</Path>
+		</Field>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					a
+				]]>
+			</Path>
+		</Field>
+	</Field>
+</Pattern>

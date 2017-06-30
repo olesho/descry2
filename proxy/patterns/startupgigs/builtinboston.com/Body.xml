@@ -1,0 +1,48 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^http://www.builtinboston.com/job/
+		]]></Include>
+	</URL>
+	<Field title="Body" type="struct">
+		<Path>
+			<![CDATA[
+				//article[@role='article']
+			]]>
+		</Path>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					//h1/span/text()
+				]]>
+			</Path>
+          	<Data>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+					[\x20\x09\x0D\x0A]+[\x20\x09\x0D\x0A]
+				]]></Remove>
+          	</Data>
+		</Field>
+		<Field title="Description" type="[]string">
+			<Path>
+				<![CDATA[
+					//div[@class='node__content']/descendant::*/text()
+				]]>
+			</Path>
+			<Data>
+              	<Exclude>
+              		<![CDATA[
+						^[\x20\x09\x0D\x0A]+$
+						^$
+					]]>
+              	</Exclude>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+					[\x20\x09\x0D\x0A]+[\x20\x09\x0D\x0A]
+				]]></Remove>
+			</Data>
+		</Field>
+	</Field>
+</Pattern>

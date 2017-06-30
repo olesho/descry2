@@ -1,0 +1,48 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^https://stackoverflow.com/jobs/
+		]]></Include>
+	</URL>
+	<Field title="Body" type="struct">
+		<Path>
+			<![CDATA[
+				//div[@class='jobdetail']
+			]]>
+		</Path>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					//h1[@class='detail-jobTitle']/a/text()
+				]]>
+			</Path>
+          	<Data>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+					[\x20\x09\x0D\x0A]+[\x20\x09\x0D\x0A]
+				]]></Remove>
+          	</Data>
+		</Field>
+		<Field title="Description" type="[]string">
+			<Path>
+				<![CDATA[
+					//div[@class='description']/descendant::*/text()
+				]]>
+			</Path>
+			<Data>
+              	<Exclude>
+              		<![CDATA[
+						^[\x20\x09\x0D\x0A]+$
+						^$
+					]]>
+              	</Exclude>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+					[\x20\x09\x0D\x0A]+[\x20\x09\x0D\x0A]
+				]]></Remove>
+			</Data>
+		</Field>
+	</Field>
+</Pattern>

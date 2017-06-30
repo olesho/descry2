@@ -1,0 +1,41 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+				^https://jobs.github.com/positions/[a-z0-9-]+
+		]]></Include>
+	</URL>
+	<Field title="Body" type="struct">
+		<Path>
+			<![CDATA[
+				//div[@id='page']/div[@class='inner']
+			]]>
+		</Path>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					h1
+				]]>
+			</Path>
+		</Field>
+		<Field title="Description" type="[]string">
+			<Path>
+				<![CDATA[
+					div/div[@class='column main ']/descendant::*/text()
+				]]>
+			</Path>
+			<Data>
+              	<Exclude>
+              		<![CDATA[
+						^[\x20\x09\x0D\x0A]+$
+						^$
+					]]>
+              	</Exclude>
+				<Remove><![CDATA[
+					^[\x20\x09\x0D\x0A]+
+					[\x20\x09\x0D\x0A]+$
+					[\x20\x09\x0D\x0A]+[\x20\x09\x0D\x0A]
+				]]></Remove>
+			</Data>
+		</Field>
+	</Field>
+</Pattern>

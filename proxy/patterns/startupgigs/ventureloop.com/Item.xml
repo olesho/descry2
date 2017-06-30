@@ -1,0 +1,28 @@
+<Pattern mime="html">
+	<URL>
+		<Include><![CDATA[
+			^http://ventureloop.com/ventureloop/job_search_results.php
+		]]></Include>
+	</URL>
+	<Field title="Item" type="[]struct">
+		<Path>
+			<![CDATA[
+				//tr[@class='jobHighlight']/td/a[contains(@href, 'jobdetail.php?jobid=')]
+			]]>
+		</Path>
+		<Field title="Link" type="string">
+			<Path>
+				<![CDATA[
+					@href
+				]]>
+			</Path>
+		</Field>
+		<Field title="Title" type="string">
+			<Path>
+				<![CDATA[
+					text()
+				]]>
+			</Path>
+		</Field>
+	</Field>
+</Pattern>
