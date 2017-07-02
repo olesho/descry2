@@ -87,14 +87,14 @@ func (p *CompiledXpathRules) Clean(s *html.Node) *html.Node {
 				})
 			}
 		}
-	}
 
-	for _, toRemove := range list {
-		iterateNodes(s, func(root *html.Node) {
-			if toRemove == root {
-				root.Parent.RemoveChild(root)
-			}
-		})
+		for _, toRemove := range list {
+			iterateNodes(s, func(root *html.Node) {
+				if toRemove == root {
+					root.Parent.RemoveChild(root)
+				}
+			})
+		}
 	}
 
 	return s

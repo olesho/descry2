@@ -4,7 +4,7 @@ package parser
 import (
 	"bytes"
 	"errors"
-	//"fmt"
+	//	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -172,37 +172,39 @@ func (f *CompiledField) Retrieve(root *html.Node) (result interface{}) {
 							// clean off unnecessary nodes
 							next = f.xdata.Clean(next)
 
-							var buf bytes.Buffer
-							w := io.Writer(&buf)
+							if next != nil {
+								var buf bytes.Buffer
+								w := io.Writer(&buf)
 
-							if f.attr {
-								err = html.Render(w, next)
-							} else {
-								err = Render(w, next)
-							}
-							if err != nil {
-								// cant render
-								//fmt.Println(err)
-							}
+								if f.attr {
+									err = html.Render(w, next)
+								} else {
+									err = Render(w, next)
+								}
+								if err != nil {
+									// cant render
+									//fmt.Println(err)
+								}
 
-							val, err := ByteToKind(f.dataType.kind, buf.Bytes())
-							if err != nil {
-								// cant convert
-								//fmt.Println(err)
-							} else {
-								if f.unique {
-									unique := true
-									for _, v := range res {
-										// not sure if it will work???
-										if v == val {
-											unique = false
+								val, err := ByteToKind(f.dataType.kind, buf.Bytes())
+								if err != nil {
+									// cant convert
+									//fmt.Println(err)
+								} else {
+									if f.unique {
+										unique := true
+										for _, v := range res {
+											// not sure if it will work???
+											if v == val {
+												unique = false
+											}
 										}
-									}
-									if unique {
+										if unique {
+											res = append(res, val)
+										}
+									} else {
 										res = append(res, val)
 									}
-								} else {
-									res = append(res, val)
 								}
 							}
 						}
@@ -256,23 +258,25 @@ func (f *CompiledField) Retrieve(root *html.Node) (result interface{}) {
 						// clean off unnecessary nodes
 						singleNode = f.xdata.Clean(singleNode)
 
-						var buf bytes.Buffer
-						w := io.Writer(&buf)
+						if singleNode != nil {
+							var buf bytes.Buffer
+							w := io.Writer(&buf)
 
-						if f.attr {
-							err = html.Render(w, singleNode)
-						} else {
-							err = Render(w, singleNode)
-						}
-						if err != nil {
-							// cant render
-							//fmt.Println(err)
-						}
+							if f.attr {
+								err = html.Render(w, singleNode)
+							} else {
+								err = Render(w, singleNode)
+							}
+							if err != nil {
+								// cant render
+								//fmt.Println(err)
+							}
 
-						result, err = ByteToKind(f.dataType.kind, buf.Bytes())
-						if err != nil {
-							// cant convert
-							//fmt.Println(err)
+							result, err = ByteToKind(f.dataType.kind, buf.Bytes())
+							if err != nil {
+								// cant convert
+								//fmt.Println(err)
+							}
 						}
 					}
 				} else {
