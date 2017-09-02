@@ -4,6 +4,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -67,11 +68,13 @@ func (i *ProxyInterceptor) Listen(port string, verbose bool) error {
 		if ctx != nil {
 			if ctx.Resp != nil {
 				if strings.Contains(ctx.Resp.Header.Get("Content-Type"), "text/html") {
+					defer ctx.Resp.Body.Close()
+					buf, err := ioutil.ReadAll(ctx.Resp.Body)
+					if err != nil {
+						fmt.Println(err)
+					}
 
-					buf, _ := ioutil.ReadAll(ctx.Resp.Body)
 					rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
-					//rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
-					//ctx.Resp.Body = rdr2
 
 					var header, body []byte
 					headerBuffer := bytes.NewBuffer(header)

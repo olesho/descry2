@@ -23,8 +23,7 @@ import (
 var lineSplit = regexp.MustCompile(`\n+`)
 
 type Type struct {
-	kind reflect.Kind
-	//isArray bool
+	kind   reflect.Kind
 	isHtml bool
 }
 
@@ -51,8 +50,12 @@ func (f *Map) UnmarshalYaml(data []byte) error {
 	return yaml.Unmarshal(data, &f)
 }
 
-func (f *Map) Marshal() ([]byte, error) {
+func (f *Map) MarshalXml() ([]byte, error) {
 	return xml.Marshal(&f)
+}
+
+func (f *Map) MarshalYaml() ([]byte, error) {
+	return yaml.Marshal(&f)
 }
 
 func CompileType(typeName string) (*Type, error) {
@@ -97,7 +100,52 @@ func hasExt(fileName, ext string) bool {
 	return parts[len(parts)-1] == ext
 }
 
-func (p *Patterns) LoadTree(el *PatternNode, path string) error {
+func (p *Patterns) LoadXml(el *PatternNode, data []byte, itemName string) error {
+	next_pattern := &Map{}
+	err := next_pattern.UnmarshalXml(data)
+	if err != nil {
+		return err
+	} else {
+		// set default type for root element
+		if next_pattern.Field.Type == "" {
+			next_pattern.Field.Type = "struct"
+		}
+		compiledPattern, err := next_pattern.Compile()
+		if err != nil {
+			return err
+		}
+
+		map[string]interface{}(*el)[itemName] = compiledPattern
+
+	}
+	return nil
+}
+
+func (p *Patterns) LoadYaml(el *PatternNode, data []byte, itemName string) error {
+	next_pattern := &Map{}
+	err := next_pattern.UnmarshalYaml(data)
+	if err != nil {
+		return err
+	} else {
+		// set default type for root element
+		if next_pattern.Field.Type == "" {
+			next_pattern.Field.Type = "struct"
+		}
+		compiledPattern, err := next_pattern.Compile()
+		if err != nil {
+			return err
+		}
+
+		map[string]interface{}(*el)[itemName] = compiledPattern
+	}
+	return nil
+}
+
+func (p *Patterns) LoadTree(path string) error {
+	return p.Load(p.Tree, path)
+}
+
+func (p *Patterns) Load(el *PatternNode, path string) error {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		return err
@@ -106,7 +154,7 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 		itemName := f.Name()
 		if f.IsDir() {
 			new_el := &PatternNode{}
-			err := p.LoadTree(new_el, path+"/"+itemName)
+			err := p.Load(new_el, path+"/"+itemName)
 			if err != nil {
 				p.Log.Println(err)
 			}
@@ -116,39 +164,15 @@ func (p *Patterns) LoadTree(el *PatternNode, path string) error {
 			if err != nil {
 				p.Log.Println(err)
 			} else {
-				next_pattern := &Map{}
+				var err error
 				if hasExt(itemName, "xml") {
-					err := next_pattern.UnmarshalXml(data)
-					if err != nil {
-						p.Log.Println("Pattern "+path+"/"+itemName+" compilation error", err)
-					} else {
-						// set default type for root element
-						if next_pattern.Field.Type == "" {
-							next_pattern.Field.Type = "struct"
-						}
-						compiledPattern, err := next_pattern.Compile()
-						if err != nil {
-							p.Log.Println("Pattern compilation error: ", err)
-						} else {
-							map[string]interface{}(*el)[itemName] = compiledPattern
-						}
-					}
+					err = p.LoadXml(el, data, itemName)
 				} else if hasExt(itemName, "yaml") {
-					err := next_pattern.UnmarshalYaml(data)
-					if err != nil {
-						p.Log.Println("Pattern "+path+"/"+itemName+" compilation error", err)
-					} else {
-						// set default type for root element
-						if next_pattern.Field.Type == "" {
-							next_pattern.Field.Type = "struct"
-						}
-						compiledPattern, err := next_pattern.Compile()
-						if err != nil {
-							p.Log.Println("Pattern compilation error: ", err)
-						} else {
-							map[string]interface{}(*el)[itemName] = compiledPattern
-						}
-					}
+					err = p.LoadYaml(el, data, itemName)
+				}
+
+				if err != nil {
+					p.Log.Println("Pattern "+path+"/"+itemName+" compilation error", err)
 				}
 			}
 		}

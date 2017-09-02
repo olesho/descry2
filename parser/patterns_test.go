@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/antchfx/xquery/html"
+	"github.com/stretchr/testify/assert"
+	//"github.com/stretchr/testify/require"
 )
 
 func Test_Retrieve_single(t *testing.T) {
@@ -174,5 +176,132 @@ func TestRetrieve_multipleHtmlSource(t *testing.T) {
 			"got:", len(titles),
 		)
 	}
+}
 
+func TestLoadXml(t *testing.T) {
+	pn := NewPatterns(nil)
+	data := []byte(xmlStr)
+	err := pn.LoadXml(pn.Tree, data, "test.xml")
+	if err != nil {
+		t.Errorf("Error loading pattern", err)
+	}
+
+	m := map[string]interface{}(*pn.Tree)["test.xml"].(*CompiledMap)
+
+	assert.Equal(t, m.field.title, "Item")
+	assert.Equal(t, m.field.path[0].String(), "//table[@class='itemlist']/tbody/tr/td[@class='title']")
+	assert.Equal(t, m.field.field[0].title, "Link")
+	assert.Equal(t, m.field.field[0].path[0].String(), "a[contains(@href, 'item?id=')]/@href")
+	assert.Equal(t, m.field.field[1].title, "Title")
+	assert.Equal(t, m.field.field[1].path[0].String(), "a[contains(@href, 'item?id=')]")
+}
+
+var xmlStr = `
+		<Pattern mime="html">
+			<URL>
+				<Include><![CDATA[
+					^https://news.ycombinator.com/jobs
+				]]></Include>
+			</URL>
+			<Field title="Item" type="struct" multiple="true">
+				<Path>
+					<![CDATA[
+						//table[@class='itemlist']/tbody/tr/td[@class='title']
+					]]>
+				</Path>
+				<Field title="Link" type="string">
+					<Path>
+						a[contains(@href, 'item?id=')]/@href
+					</Path>
+				</Field>
+				<Field title="Title" type="string">
+					<Path>
+						a[contains(@href, 'item?id=')]
+					</Path>
+				</Field>
+			</Field>
+		</Pattern>
+`
+
+var ymlStr1 = `
+
+  field:
+    title: Item
+    type: struct
+    path: "//table[@class='itemlist']/tbody/tr/td[@class='title']"
+    data: null
+    xdata: null
+    optional: false
+    dontstore: false
+    multiple: true
+    unique: false
+    attr: false
+    field:
+    - title: Link
+      type: string
+      path: "a[contains(@href, 'item?id=')]/@href"
+      data: null
+      xdata: null
+      optional: false
+      dontstore: false
+      multiple: false
+      unique: false
+      attr: false
+      field: []
+    - title: Title
+      type: string
+      path: "\n\t\t\t\ta[contains(@href, 'item?id=')]"
+      data: null
+      xdata: null
+      optional: false
+      dontstore: false
+      multiple: false
+      unique: false
+      attr: false
+      field: []
+  url:
+    submatch: ""
+    include: "^https://news.ycombinator.com/jobs"
+    exclude: ""
+    remove: ""
+  mime: html`
+
+var ymlStr2 = `pattern:
+  url:
+    include:
+      - ^https://news.ycombinator.com/jobs
+      - field:
+        title: Item
+        type: struct
+        multiple: true
+        path:
+          - //table[@class='itemlist']/tbody/tr/td[@class='title']
+        - field:
+          title: Link
+          type: string
+          path:
+          - a[contains(@href, 'item?id=')]/@href
+        - field:
+          title: Title
+          type: string
+          path:
+          - a[contains(@href, 'item?id=')]`
+
+func TestLoadYml(t *testing.T) {
+	pn := NewPatterns(nil)
+	data := []byte(ymlStr1)
+
+	err := pn.LoadYaml(pn.Tree, data, "test.yml")
+	if err != nil {
+		t.Errorf("Error loading pattern", err)
+	}
+
+	m := map[string]interface{}(*pn.Tree)["test.yml"].(*CompiledMap)
+
+	assert.Equal(t, m.field.title, "Item")
+	assert.Equal(t, m.field.path[0].String(), "//table[@class='itemlist']/tbody/tr/td[@class='title']")
+	assert.Equal(t, m.field.field[0].title, "Link")
+	assert.Equal(t, m.field.field[0].path[0].String(), "a[contains(@href, 'item?id=')]/@href")
+	assert.Equal(t, m.field.field[1].title, "Title")
+	assert.Equal(t, m.field.field[1].path[0].String(), "a[contains(@href, 'item?id=')]")
 }
